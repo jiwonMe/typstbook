@@ -1,0 +1,16 @@
+{
+  "name": "typstbook",
+  "private": true,
+  "workspaces": [
+    "packages/server",
+    "packages/ui"
+  ],
+  "scripts": {
+    "dev": "tsx packages/server/src/cli.ts dev",
+    "test": "npm run test -w @typstbook/server",
+    "typecheck": "npm run typecheck -w @typstbook/server && npm run typecheck -w @typstbook/ui"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.3"
+  }
+}
