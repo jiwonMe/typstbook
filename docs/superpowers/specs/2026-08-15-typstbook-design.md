@@ -25,7 +25,7 @@ Four pieces:
 3. **Render backend** — `compile({ file, title, args, page }) → { pages, diagnostics }`. v1 spawns `typst compile` to SVG with a `{p}` page template.
 4. **Dev server + UI** — file watch, WebSocket, sidebar / canvas / controls.
 
-Stack: TypeScript CLI + Vite UI + local `typst`. The helper is resolved via `--package-path` as `@preview/typstbook:0.1.0`.
+UI stack: React + TypeScript + Vite + Tailwind CSS + shadcn/ui. Linear-inspired dark workbench chrome.
 
 ```
 *.story.typ → Extractor (typst eval) → Story IR → UI
@@ -59,7 +59,8 @@ Authors write `#story(...)` at the top level of `**/*.story.typ`. Multiple stori
 - v1 args are JSON-serializable: strings, numbers, booleans, hex colors, and nested arrays/dictionaries.
 - Omitted `arg-types` are inferred from default arg JSON types (`text` / `number` / `boolean` / `color`).
 - Story id: `{posix-path-without-.story.typ}--{title-slug}`.
-- Optional package-root `preview.typ` is `#include`d before the story file on every extract and render (shared set/show, fonts, default chrome). Missing file is skipped.
+- Optional package-root `preview.typ` exports `#let preview(body) = { ...; body }`. The workbench applies `#show: preview` on every extract/render so shared fonts and set/show rules wrap story content. Missing file is skipped.
+- Bare top-level `#set` in `preview.typ` alone does not affect stories (Typst include scoping); put rules inside `preview`.
 
 ## Story IR
 
@@ -87,7 +88,7 @@ Extract (per story file). Requires Typst 0.15+ (`typst eval`). The extractor pip
 typst eval 'query(<typstbook-story>).map(it => it.value)' --in - --root <pkg-root> --package-path <helper-packages>
 ```
 
-Entry document optionally `#include`s `/preview.typ`, then the story file, then `#emit-stories()`.
+Entry document optionally imports `/preview.typ` and applies `#show: preview`, then `#include`s the story file, then `#emit-stories()`.
 
 Render:
 
@@ -95,7 +96,7 @@ Render:
 typst compile --root <pkg-root> --package-path <helper-packages> --input args='{...}' --input title='Warning' wrapper.typ out-{p}.svg
 ```
 
-Wrapper optionally `#include`s `/preview.typ`, then the story file, then `#render-story(title, args)`. Wrappers live in a temp dir.
+Wrapper optionally applies `#show: preview`, then `#include`s the story file, then `#render-story(title, args)`. Wrappers live in a temp dir.
 
 Invalidation:
 

@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   inferArgTypes,
   inferControl,
+  mergeStoryArgs,
   storyId,
   titleSlug,
   uniquifyStoryIds,
@@ -40,6 +41,22 @@ describe("inferArgTypes", () => {
     assert.equal(inferred.count.control, "number");
     assert.equal(inferred.on.control, "boolean");
     assert.equal(inferred.fill.control, "color");
+  });
+});
+
+describe("mergeStoryArgs", () => {
+  it("adds new defaults, keeps overrides, and drops removed keys", () => {
+    assert.deepEqual(
+      mergeStoryArgs(
+        { title: "Test", t: 23 },
+        { title: "edited" },
+      ),
+      { title: "edited", t: 23 },
+    );
+    assert.deepEqual(
+      mergeStoryArgs({ title: "Test" }, { title: "x", gone: true }),
+      { title: "x" },
+    );
   });
 });
 

@@ -2,6 +2,8 @@
 
 A Storybook-like local workbench for Typst package authors. Write `*.story.typ` files, run `typstbook dev`, and isolate-compile functions, templates, set/show rules, pages, and math while editing args.
 
+The UI is React + TypeScript + Tailwind CSS + shadcn/ui.
+
 ## Requirements
 
 - Node.js 22+
@@ -36,7 +38,7 @@ Then open the printed local URL. The demo package has callout, resume template, 
 )
 ```
 
-Stories are any `*.story.typ` file under the package root. Optional package-root `preview.typ` is `#include`d before every story (shared set/show, fonts, chrome). v1 args are JSON-serializable values only.
+Stories are any `*.story.typ` file under the package root. Optional package-root `preview.typ` must export `#let preview(body) = { ...; body }` — typstbook applies `#show: preview` around every story so shared fonts/set/show actually take effect. v1 args are JSON-serializable values only.
 
 ## Commands
 

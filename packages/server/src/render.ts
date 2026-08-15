@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import type { CompileRequest, CompileResult } from "./types.ts";
 import { diagnosticsFromStderr, runTypst } from "./typst.ts";
 import { titleSlug, toPosix } from "./ir.ts";
-import { hasPreviewFile, previewIncludeLine } from "./preview.ts";
+import { hasPreviewFile, previewSetupSource } from "./preview.ts";
 
 export type RenderOptions = {
   typst: string;
@@ -17,7 +17,7 @@ export function renderWrapperSource(
   includePreview = false,
 ): string {
   return `#import "@preview/typstbook:0.1.0": render-story, decode-args
-${previewIncludeLine(includePreview)}#include "/${storyFilePosix}"
+${previewSetupSource(includePreview)}#include "/${storyFilePosix}"
 #let args = decode-args(sys.inputs.at("args"))
 #render-story(sys.inputs.at("title"), args)
 `;

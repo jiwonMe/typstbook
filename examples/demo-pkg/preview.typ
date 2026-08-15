@@ -1,5 +1,8 @@
-// Shared setup applied to every story extract and render.
-// Put set/show rules, fonts, and default page chrome here.
+// Shared setup for every story. Export `preview` and apply set/show inside it —
+// bare top-level `#set` in this file does not affect story content.
 
-#set text(lang: "ko", size: 11pt)
-#set par(justify: true)
+#let preview(body) = {
+  set text(lang: "ko", size: 11pt, font: ("Bookk Myungjo",))
+  set par(justify: true)
+  body
+}

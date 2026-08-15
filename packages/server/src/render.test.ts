@@ -25,9 +25,10 @@ describe("renderWrapperSource", () => {
     assert.doesNotMatch(source, /#include "\/preview\.typ"/);
   });
 
-  it("optionally includes package-root preview.typ", () => {
+  it("optionally wraps stories with package-root preview.typ", () => {
     const source = renderWrapperSource("stories/callout.story.typ", true);
-    assert.match(source, /#include "\/preview\.typ"/);
+    assert.match(source, /#import "\/preview\.typ": preview/);
+    assert.match(source, /#show: preview/);
     assert.match(source, /#include "\/stories\/callout\.story\.typ"/);
   });
 });

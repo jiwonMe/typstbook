@@ -13,11 +13,12 @@ import type {
   ServerMessage,
   StoryIR,
 } from "./types.ts";
-import { toPosix } from "./ir.ts";
+import { mergeStoryArgs, toPosix } from "./ir.ts";
 import { isPreviewPath } from "./preview.ts";
 import { ensureHelperPackagePath, requireTypstBinary } from "./typst.ts";
 
 const uiRoot = fileURLToPath(new URL("../../ui", import.meta.url));
+const WORKBENCH_WS_PATH = "/__typstbook_ws";
 
 export type WorkbenchOptions = {
   packageRoot: string;
@@ -37,6 +38,8 @@ export class Workbench {
   private readonly clients = new Set<WebSocket>();
   private compiling = false;
   private compileQueued = false;
+  private compileTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly compileDebounceMs = 80;
 
   constructor(options: WorkbenchOptions) {
     this.packageRoot = resolve(options.packageRoot);
@@ -48,17 +51,36 @@ export class Workbench {
     this.packagePath = await ensureHelperPackagePath();
     await this.reloadAll();
 
+    const httpServer = createServer();
     const vite = await createViteServer({
       root: uiRoot,
       configFile: join(uiRoot, "vite.config.ts"),
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        // Keep Vite HMR off `/ws` — that path used to collide with our socket
+        // and caused endless full-page reloads ("server connection lost").
+        hmr: {
+          server: httpServer,
+          path: "/vite-hmr",
+        },
+      },
       appType: "spa",
     });
-
-    const httpServer = createServer((req, res) => {
+    httpServer.on("request", (req, res) => {
       vite.middlewares(req, res);
     });
-    const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
+
+    const wss = new WebSocketServer({ noServer: true });
+    httpServer.on("upgrade", (request, socket, head) => {
+      const pathname = new URL(request.url ?? "/", "http://127.0.0.1").pathname;
+      if (pathname !== WORKBENCH_WS_PATH) {
+        return;
+      }
+      wss.handleUpgrade(request, socket, head, (ws) => {
+        wss.emit("connection", ws, request);
+      });
+    });
+
     wss.on("connection", (socket) => {
       this.clients.add(socket);
       this.send(socket, {
@@ -66,9 +88,6 @@ export class Workbench {
         stories: this.stories,
         errors: this.errors,
       });
-      if (this.selectedId) {
-        void this.compileSelected();
-      }
       socket.on("message", (data) => {
         this.onClientMessage(String(data));
       });
@@ -128,15 +147,15 @@ export class Workbench {
     const action = invalidateFor(reason);
     switch (action) {
       case "compile":
-        await this.compileSelected();
+        this.scheduleCompile();
         break;
       case "extract-file":
         await this.reloadFile(file);
-        await this.compileSelected();
+        this.scheduleCompile();
         break;
       case "extract-all":
         await this.reloadAll();
-        await this.compileSelected();
+        this.scheduleCompile();
         break;
       default: {
         const _exhaustive: never = action;
@@ -155,18 +174,21 @@ export class Workbench {
     switch (message.type) {
       case "select":
         this.selectedId = message.storyId;
-        if (!this.argsById.has(message.storyId)) {
+        {
           const story = this.stories.find((item) => item.id === message.storyId);
           if (story) {
-            this.argsById.set(message.storyId, { ...story.args });
+            this.argsById.set(
+              message.storyId,
+              mergeStoryArgs(story.args, this.argsById.get(message.storyId)),
+            );
           }
         }
-        void this.compileSelected();
+        void this.scheduleCompile();
         break;
       case "set-args":
         this.argsById.set(message.storyId, message.args);
         if (this.selectedId === message.storyId) {
-          void this.compileSelected();
+          void this.scheduleCompile();
         }
         break;
       default: {
@@ -229,9 +251,25 @@ export class Workbench {
         this.lastGoodPages.delete(id);
       }
     }
+    for (const story of this.stories) {
+      this.argsById.set(
+        story.id,
+        mergeStoryArgs(story.args, this.argsById.get(story.id)),
+      );
+    }
     if (this.selectedId && !ids.has(this.selectedId)) {
       this.selectedId = this.stories[0]?.id ?? null;
     }
+  }
+
+  private scheduleCompile(): void {
+    if (this.compileTimer) {
+      clearTimeout(this.compileTimer);
+    }
+    this.compileTimer = setTimeout(() => {
+      this.compileTimer = null;
+      void this.compileSelected();
+    }, this.compileDebounceMs);
   }
 
   private async compileSelected(): Promise<void> {
@@ -255,7 +293,8 @@ export class Workbench {
         });
         return;
       }
-      const args = this.argsById.get(storyId) ?? { ...story.args };
+      const args = mergeStoryArgs(story.args, this.argsById.get(storyId));
+      this.argsById.set(storyId, args);
       const compiled = await compileStory(
         {
           typst: this.typst,

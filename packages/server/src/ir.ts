@@ -54,6 +54,23 @@ export function inferArgTypes(
   return result;
 }
 
+/** Keep live overrides for keys that still exist; add new defaults; drop removed keys. */
+export function mergeStoryArgs(
+  defaults: Record<string, unknown>,
+  current?: Record<string, unknown>,
+): Record<string, unknown> {
+  if (!current) {
+    return { ...defaults };
+  }
+  const merged: Record<string, unknown> = { ...defaults };
+  for (const key of Object.keys(defaults)) {
+    if (Object.prototype.hasOwnProperty.call(current, key)) {
+      merged[key] = current[key];
+    }
+  }
+  return merged;
+}
+
 export function uniquifyStoryIds(stories: StoryIR[]): {
   stories: StoryIR[];
   errors: FileError[];

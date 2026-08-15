@@ -12,8 +12,14 @@ export async function hasPreviewFile(packageRoot: string): Promise<boolean> {
   }
 }
 
-export function previewIncludeLine(includePreview: boolean): string {
-  return includePreview ? `#include "/${PREVIEW_FILE}"\n` : "";
+/** Typst `#include` set rules do not leak to later content; wrap via `#show: preview`. */
+export function previewSetupSource(includePreview: boolean): string {
+  if (!includePreview) {
+    return "";
+  }
+  return `#import "/${PREVIEW_FILE}": preview
+#show: preview
+`;
 }
 
 export function isPreviewPath(relativePosix: string): boolean {

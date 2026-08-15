@@ -1,7 +1,7 @@
 import type { ArgType, ExtractResult, FileError, StoryIR } from "./types.ts";
 import { inferArgTypes, storyId, uniquifyStoryIds } from "./ir.ts";
 import { discoverStoryFiles } from "./discover.ts";
-import { hasPreviewFile, previewIncludeLine } from "./preview.ts";
+import { hasPreviewFile, previewSetupSource } from "./preview.ts";
 import { diagnosticsFromStderr, runTypst } from "./typst.ts";
 
 export type ExtractorOptions = {
@@ -26,7 +26,7 @@ export function evalEntrySource(
   includePreview = false,
 ): string {
   return `#import "@preview/typstbook:0.1.0": emit-stories
-${previewIncludeLine(includePreview)}#include "/${storyFilePosix}"
+${previewSetupSource(includePreview)}#include "/${storyFilePosix}"
 #emit-stories()
 `;
 }

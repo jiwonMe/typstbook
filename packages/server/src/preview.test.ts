@@ -7,13 +7,14 @@ import { evalEntrySource } from "./extractor.ts";
 import {
   hasPreviewFile,
   isPreviewPath,
-  previewIncludeLine,
+  previewSetupSource,
 } from "./preview.ts";
 
 describe("preview helpers", () => {
-  it("builds an optional include line", () => {
-    assert.equal(previewIncludeLine(false), "");
-    assert.equal(previewIncludeLine(true), '#include "/preview.typ"\n');
+  it("builds an optional show: preview setup", () => {
+    assert.equal(previewSetupSource(false), "");
+    assert.match(previewSetupSource(true), /#import "\/preview\.typ": preview/);
+    assert.match(previewSetupSource(true), /#show: preview/);
     assert.equal(isPreviewPath("preview.typ"), true);
     assert.equal(isPreviewPath("stories/preview.typ"), false);
   });
@@ -21,15 +22,18 @@ describe("preview helpers", () => {
   it("detects package-root preview.typ", async () => {
     const root = await mkdtemp(join(tmpdir(), "typstbook-preview-"));
     assert.equal(await hasPreviewFile(root), false);
-    await writeFile(join(root, "preview.typ"), "#set text(size: 12pt)\n");
+    await writeFile(
+      join(root, "preview.typ"),
+      "#let preview(body) = {\n  set text(size: 12pt)\n  body\n}\n",
+    );
     assert.equal(await hasPreviewFile(root), true);
   });
 
-  it("puts preview before the story in eval entries", () => {
+  it("applies preview before the story in eval entries", () => {
     const source = evalEntrySource("stories/callout.story.typ", true);
-    const previewAt = source.indexOf('#include "/preview.typ"');
+    const showAt = source.indexOf("#show: preview");
     const storyAt = source.indexOf('#include "/stories/callout.story.typ"');
-    assert.ok(previewAt >= 0);
-    assert.ok(storyAt > previewAt);
+    assert.ok(showAt >= 0);
+    assert.ok(storyAt > showAt);
   });
 });

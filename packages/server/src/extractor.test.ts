@@ -59,6 +59,7 @@ describe("extractAllStories", () => {
       "stories/callout--warning",
       "stories/math--numbered-equation",
       "stories/resume--resume-default",
+      "stories/test--test",
     ]);
   });
 });

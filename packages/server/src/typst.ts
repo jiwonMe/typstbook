@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
-import { mkdir, rm, symlink } from "node:fs/promises";
-import { delimiter, dirname, join } from "node:path";
+import { mkdir, readlink, rm, symlink } from "node:fs/promises";
+import { delimiter, dirname, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { existsSync } from "node:fs";
@@ -56,8 +56,25 @@ export async function ensureHelperPackagePath(): Promise<string> {
   const root = join(tmpdir(), "typstbook-packages");
   const dest = join(root, "preview", "typstbook", "0.1.0");
   await mkdir(dirname(dest), { recursive: true });
+
+  try {
+    const existing = await readlink(dest);
+    const resolved = resolve(dirname(dest), existing);
+    if (resolved === helperPackageDir || existing === helperPackageDir) {
+      return root;
+    }
+  } catch {
+    // Missing or not a symlink — recreate below.
+  }
+
   await rm(dest, { recursive: true, force: true });
-  await symlink(helperPackageDir, dest);
+  try {
+    await symlink(helperPackageDir, dest);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") {
+      throw error;
+    }
+  }
   return root;
 }
 
