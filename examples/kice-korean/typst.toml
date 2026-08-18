@@ -1,0 +1,7 @@
+[package]
+name = "kice-korean"
+version = "0.1.0"
+entrypoint = "src/lib.typ"
+authors = ["typstbook"]
+license = "MIT"
+description = "KICE-style Korean reading exam components"
