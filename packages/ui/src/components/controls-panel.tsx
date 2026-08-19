@@ -1,21 +1,21 @@
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
-import { Textarea } from "@/components/ui/textarea";
+import { Box, Divider, HStack, Text, VStack } from "@seed-design/react";
+import type { ReactNode } from "react";
+import type { ControlsPlacement } from "@/lib/controls-placement";
 import type { ArgType, StoryIR } from "@/lib/types";
+import { Checkbox } from "seed-design/ui/checkbox";
+import {
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectRoot,
+  SelectTrigger,
+} from "seed-design/ui/select";
+import { TextField, TextFieldInput, TextFieldTextarea } from "seed-design/ui/text-field";
 
 type ControlsPanelProps = {
   selected: StoryIR | undefined;
   args: Record<string, unknown>;
+  placement: ControlsPlacement;
   onChange: (name: string, value: unknown) => void;
 };
 
@@ -34,68 +34,94 @@ function ArgControl({
   switch (control) {
     case "boolean":
       return (
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id={name}
-            checked={Boolean(value)}
-            onCheckedChange={(checked) => onChange(name, checked === true)}
-          />
-          <Label htmlFor={name}>{name}</Label>
-        </div>
+        <Checkbox
+          label={name}
+          tone="neutral"
+          size="medium"
+          checked={Boolean(value)}
+          onCheckedChange={(checked) => onChange(name, checked === true)}
+        />
       );
     case "number":
       return (
-        <div className="space-y-1.5">
-          <Label htmlFor={name}>{name}</Label>
-          <Input
-            id={name}
-            type="number"
-            value={String(value ?? 0)}
-            onChange={(event) => onChange(name, Number(event.target.value))}
-          />
-        </div>
+        <TextField
+          label={name}
+          size="medium"
+          value={String(value ?? 0)}
+          onValueChange={({ value: next }) => onChange(name, Number(next))}
+        >
+          <TextFieldInput inputMode="decimal" />
+        </TextField>
       );
     case "select":
       return (
-        <div className="space-y-1.5">
-          <Label>{name}</Label>
-          <Select
-            value={String(value ?? "")}
-            onValueChange={(next) => onChange(name, next)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select…" />
-            </SelectTrigger>
-            <SelectContent>
+        <SelectRoot
+          label={name}
+          size="medium"
+          value={value == null || value === "" ? [] : [String(value)]}
+          onValueChange={(next) => onChange(name, next[0] ?? "")}
+        >
+          <SelectTrigger placeholder="Select…" />
+          <SelectContent>
+            <SelectGroup>
               {(argType.options ?? []).map((option) => (
-                <SelectItem key={String(option)} value={String(option)}>
-                  {String(option)}
-                </SelectItem>
+                <SelectItem
+                  key={String(option)}
+                  value={String(option)}
+                  label={String(option)}
+                />
               ))}
-            </SelectContent>
-          </Select>
-        </div>
+            </SelectGroup>
+          </SelectContent>
+        </SelectRoot>
       );
-    case "color":
+    case "color": {
+      const hex = typeof value === "string" ? value : "#000000";
       return (
-        <div className="space-y-1.5">
-          <Label htmlFor={name}>{name}</Label>
-          <Input
-            id={name}
-            type="color"
-            className="h-9 cursor-pointer p-1"
-            value={typeof value === "string" ? value : "#5e6ad2"}
-            onChange={(event) => onChange(name, event.target.value)}
-          />
-        </div>
+        <HStack gap="x2" align="flex-end" width="full">
+          <Box
+            width="x10"
+            height="x10"
+            borderRadius="r2"
+            borderWidth={1}
+            borderColor="stroke.neutralMuted"
+            overflowX="hidden"
+            overflowY="hidden"
+            flexShrink={0}
+          >
+            <input
+              type="color"
+              aria-label={`${name} color`}
+              value={hex}
+              onChange={(event) => onChange(name, event.target.value)}
+              style={{
+                width: "100%",
+                height: "100%",
+                border: 0,
+                padding: 0,
+                cursor: "pointer",
+                background: "transparent",
+              }}
+            />
+          </Box>
+          <Box flexGrow minWidth="0">
+            <TextField
+              label={name}
+              size="medium"
+              value={hex}
+              onValueChange={({ value: next }) => onChange(name, next)}
+            >
+              <TextFieldInput />
+            </TextField>
+          </Box>
+        </HStack>
       );
+    }
     case "text":
       if (value && typeof value === "object") {
         return (
-          <div className="space-y-1.5">
-            <Label htmlFor={name}>{name}</Label>
-            <Textarea
-              id={name}
+          <TextField label={name} size="medium">
+            <TextFieldTextarea
               defaultValue={JSON.stringify(value, null, 2)}
               onBlur={(event) => {
                 try {
@@ -104,20 +130,20 @@ function ArgControl({
                   onChange(name, event.target.value);
                 }
               }}
+              style={{ minHeight: 120 }}
             />
-          </div>
+          </TextField>
         );
       }
       return (
-        <div className="space-y-1.5">
-          <Label htmlFor={name}>{name}</Label>
-          <Input
-            id={name}
-            type="text"
-            value={String(value ?? "")}
-            onChange={(event) => onChange(name, event.target.value)}
-          />
-        </div>
+        <TextField
+          label={name}
+          size="medium"
+          value={String(value ?? "")}
+          onValueChange={({ value: next }) => onChange(name, next)}
+        >
+          <TextFieldInput />
+        </TextField>
       );
     default: {
       const _exhaustive: never = control;
@@ -129,42 +155,101 @@ function ArgControl({
 export function ControlsPanel({
   selected,
   args,
+  placement,
   onChange,
 }: ControlsPanelProps) {
   const argEntries = selected ? Object.entries(selected.argTypes) : [];
+  const borderProps = controlsBorder(placement);
 
   return (
-    <aside className="flex h-full flex-col border-l border-border bg-card">
-      <div className="flex items-center justify-between px-3.5 py-3">
-        <h2 className="text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
+    <VStack
+      height="full"
+      bg="bg.layerDefault"
+      borderColor="stroke.neutralSubtle"
+      {...borderProps}
+    >
+      <HStack align="center" justify="space-between" px="x4" py="x3">
+        <Text textStyle="t4Bold" color="fg.neutralMuted">
           Controls
-        </h2>
-        <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+        </Text>
+        <Text textStyle="t2Medium" color="fg.neutralSubtle">
           {argEntries.length}
-        </span>
-      </div>
-      <Separator />
-      <ScrollArea className="flex-1 px-3.5 py-3">
+        </Text>
+      </HStack>
+      <Divider />
+      <Box flexGrow minHeight="0" overflowY="auto" px="x4" py="x3">
         {selected ? (
           argEntries.length > 0 ? (
-            <div className="space-y-3.5">
+            <ArgList placement={placement}>
               {argEntries.map(([name, argType]) => (
-                <ArgControl
+                <Box
                   key={name}
-                  name={name}
-                  argType={argType}
-                  value={args[name]}
-                  onChange={onChange}
-                />
+                  minWidth={placement === "bottom" ? "220px" : undefined}
+                  style={
+                    placement === "bottom"
+                      ? { flexGrow: 1, flexBasis: 220, maxWidth: 360 }
+                      : undefined
+                  }
+                >
+                  <ArgControl
+                    name={name}
+                    argType={argType}
+                    value={args[name]}
+                    onChange={onChange}
+                  />
+                </Box>
               ))}
-            </div>
+            </ArgList>
           ) : (
-            <p className="px-1 py-8 text-center text-sm text-muted-foreground">
-              This story has no args.
-            </p>
+            <Box py="x8" px="x1">
+              <Text
+                as="p"
+                textStyle="t4Regular"
+                color="fg.neutralMuted"
+                align="center"
+              >
+                This story has no args.
+              </Text>
+            </Box>
           )
         ) : null}
-      </ScrollArea>
-    </aside>
+      </Box>
+    </VStack>
   );
+}
+
+function controlsBorder(placement: ControlsPlacement) {
+  switch (placement) {
+    case "right":
+      return { borderLeftWidth: 1 as const };
+    case "bottom":
+      return { borderTopWidth: 1 as const };
+    default: {
+      const _exhaustive: never = placement;
+      return _exhaustive;
+    }
+  }
+}
+
+function ArgList({
+  placement,
+  children,
+}: {
+  placement: ControlsPlacement;
+  children: ReactNode;
+}) {
+  switch (placement) {
+    case "right":
+      return <VStack gap="x4">{children}</VStack>;
+    case "bottom":
+      return (
+        <HStack gap="x4" align="flex-start" style={{ flexWrap: "wrap" }}>
+          {children}
+        </HStack>
+      );
+    default: {
+      const _exhaustive: never = placement;
+      return _exhaustive;
+    }
+  }
 }

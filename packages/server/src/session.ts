@@ -1,8 +1,6 @@
 import { watch } from "chokidar";
 import { createServer } from "node:http";
 import { extname, join, relative, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-import { createServer as createViteServer } from "vite";
 import { WebSocketServer, type WebSocket } from "ws";
 import { extractAllStories, extractStoryFile } from "./extractor.ts";
 import { invalidateFor } from "./invalidate.ts";
@@ -14,10 +12,11 @@ import type {
   StoryIR,
 } from "./types.ts";
 import { mergeStoryArgs, toPosix } from "./ir.ts";
+import { isBuiltUi, resolveUiRoot } from "./paths.ts";
 import { isPreviewPath } from "./preview.ts";
+import { serveStatic } from "./static.ts";
 import { ensureHelperPackagePath, requireTypstBinary } from "./typst.ts";
 
-const uiRoot = fileURLToPath(new URL("../../ui", import.meta.url));
 const WORKBENCH_WS_PATH = "/__typstbook_ws";
 
 export type WorkbenchOptions = {
@@ -52,23 +51,31 @@ export class Workbench {
     await this.reloadAll();
 
     const httpServer = createServer();
-    const vite = await createViteServer({
-      root: uiRoot,
-      configFile: join(uiRoot, "vite.config.ts"),
-      server: {
-        middlewareMode: true,
-        // Keep Vite HMR off `/ws` — that path used to collide with our socket
-        // and caused endless full-page reloads ("server connection lost").
-        hmr: {
-          server: httpServer,
-          path: "/vite-hmr",
+    const uiRoot = resolveUiRoot();
+    if (isBuiltUi(uiRoot)) {
+      httpServer.on("request", (req, res) => {
+        serveStatic(uiRoot, req, res);
+      });
+    } else {
+      const { createServer: createViteServer } = await import("vite");
+      const vite = await createViteServer({
+        root: uiRoot,
+        configFile: join(uiRoot, "vite.config.ts"),
+        server: {
+          middlewareMode: true,
+          // Keep Vite HMR off `/ws` — that path used to collide with our socket
+          // and caused endless full-page reloads ("server connection lost").
+          hmr: {
+            server: httpServer,
+            path: "/vite-hmr",
+          },
         },
-      },
-      appType: "spa",
-    });
-    httpServer.on("request", (req, res) => {
-      vite.middlewares(req, res);
-    });
+        appType: "spa",
+      });
+      httpServer.on("request", (req, res) => {
+        vite.middlewares(req, res);
+      });
+    }
 
     const wss = new WebSocketServer({ noServer: true });
     httpServer.on("upgrade", (request, socket, head) => {

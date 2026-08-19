@@ -1,5 +1,7 @@
 node_modules
 dist
+packages/server/helper
+packages/server/LICENSE
 .typst-packages
 .DS_Store
 *.log

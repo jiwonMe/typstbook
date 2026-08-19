@@ -1,69 +1,96 @@
+@layer theme, base, seed-base, components, seed-components, utilities;
+@import "@seed-design/css/base.layered.css";
 @import "tailwindcss";
-
-@custom-variant dark (&:is(.dark *));
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --radius-sm: calc(var(--radius) - 2px);
-  --radius-md: var(--radius);
-  --radius-lg: calc(var(--radius) + 2px);
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-}
+@import "@seed-design/tailwind4-theme";
 
 :root {
-  --radius: 0.375rem;
-  --background: #0f0f10;
-  --foreground: #ececee;
-  --card: #18181b;
-  --card-foreground: #ececee;
-  --popover: #18181b;
-  --popover-foreground: #ececee;
-  --primary: #5e6ad2;
-  --primary-foreground: #f5f5ff;
-  --secondary: #1f1f23;
-  --secondary-foreground: #ececee;
-  --muted: #1f1f23;
-  --muted-foreground: #8a8f98;
-  --accent: rgb(94 106 210 / 0.16);
-  --accent-foreground: #a5b0ff;
-  --destructive: #f87171;
-  --border: rgb(255 255 255 / 0.08);
-  --input: rgb(255 255 255 / 0.12);
-  --ring: #5e6ad2;
+  --typstbook-brand: #3c9eb2;
 }
 
-@layer base {
-  * {
-    @apply border-border;
+:root,
+:root[data-seed-color-mode="system"][data-seed-user-color-scheme="light"],
+:root[data-seed-color-mode="light-only"],
+:root [data-seed-color-mode="light-only"] {
+  --seed-color-fg-brand: var(--typstbook-brand);
+  --seed-color-fg-brand-contrast: color-mix(in srgb, var(--typstbook-brand) 82%, black);
+  --seed-color-bg-brand-solid: var(--typstbook-brand);
+  --seed-color-bg-brand-solid-pressed: color-mix(in srgb, var(--typstbook-brand) 82%, black);
+  --seed-color-bg-brand-weak: color-mix(in srgb, var(--typstbook-brand) 14%, white);
+  --seed-color-bg-brand-weak-pressed: color-mix(in srgb, var(--typstbook-brand) 22%, white);
+  --seed-color-stroke-brand-solid: color-mix(in srgb, var(--typstbook-brand) 82%, black);
+  --seed-color-stroke-brand-weak: color-mix(in srgb, var(--typstbook-brand) 42%, white);
+}
+
+:root[data-seed-color-mode="system"][data-seed-user-color-scheme="dark"],
+:root[data-seed-color-mode="dark-only"],
+:root [data-seed-color-mode="dark-only"] {
+  --seed-color-fg-brand: var(--typstbook-brand);
+  --seed-color-fg-brand-contrast: var(--typstbook-brand);
+  --seed-color-bg-brand-solid: var(--typstbook-brand);
+  --seed-color-bg-brand-solid-pressed: color-mix(in srgb, var(--typstbook-brand) 82%, black);
+  --seed-color-bg-brand-weak: color-mix(in srgb, var(--typstbook-brand) 22%, #16171b);
+  --seed-color-bg-brand-weak-pressed: color-mix(in srgb, var(--typstbook-brand) 32%, #16171b);
+  --seed-color-stroke-brand-solid: var(--typstbook-brand);
+  --seed-color-stroke-brand-weak: color-mix(in srgb, var(--typstbook-brand) 45%, #16171b);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+@media print {
+  @page {
+    margin: 0;
   }
 
   html,
   body,
   #root {
-    @apply h-full;
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
   }
 
-  body {
-    @apply bg-background text-foreground antialiased;
-    font-family: var(--font-sans);
-    font-feature-settings: "cv11", "ss01";
+  #root * {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  [data-print-hide] {
+    display: none !important;
+  }
+
+  [data-print-root] {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  [data-print-page] {
+    break-after: page;
+    break-inside: avoid;
+    transform: none !important;
+    width: auto !important;
+    max-width: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    overflow: visible !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  [data-print-page]:last-child {
+    break-after: auto;
+  }
+
+  [data-print-page] svg {
+    display: block;
+    width: 100%;
+    height: auto;
   }
 }

@@ -1,4 +1,4 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env node
 import { resolve } from "node:path";
 import { Workbench } from "./session.ts";
 import { requireTypstBinary } from "./typst.ts";
@@ -18,7 +18,12 @@ async function main(): Promise<void> {
   await requireTypstBinary();
 
   const packageRoot = resolve(argv[1] ?? process.cwd());
-  const workbench = new Workbench({ packageRoot });
+  const portEnv = process.env.TYPSTBOOK_PORT;
+  const port = portEnv === undefined ? undefined : Number(portEnv);
+  if (port !== undefined && (!Number.isInteger(port) || port <= 0)) {
+    throw new Error(`typstbook: TYPSTBOOK_PORT must be a positive integer, got ${portEnv}`);
+  }
+  const workbench = new Workbench({ packageRoot, port });
   const url = await workbench.start();
   console.log(`typstbook dev`);
   console.log(`  package: ${packageRoot}`);

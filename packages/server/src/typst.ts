@@ -2,15 +2,8 @@ import { spawn } from "node:child_process";
 import { mkdir, readlink, rm, symlink } from "node:fs/promises";
 import { delimiter, dirname, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
-import { fileURLToPath } from "node:url";
 import { existsSync } from "node:fs";
-
-const helperPackageDir = join(
-  dirname(fileURLToPath(import.meta.url)),
-  "..",
-  "..",
-  "typstbook",
-);
+import { resolveHelperPackageDir } from "./paths.ts";
 
 export const TYPST_MISSING_MESSAGE =
   "typstbook: `typst` was not found on PATH. Install Typst from https://github.com/typst/typst#installation and try again.";
@@ -53,6 +46,7 @@ export async function requireTypstBinary(): Promise<string> {
 }
 
 export async function ensureHelperPackagePath(): Promise<string> {
+  const helperDir = resolveHelperPackageDir();
   const root = join(tmpdir(), "typstbook-packages");
   const dest = join(root, "preview", "typstbook", "0.1.0");
   await mkdir(dirname(dest), { recursive: true });
@@ -60,7 +54,7 @@ export async function ensureHelperPackagePath(): Promise<string> {
   try {
     const existing = await readlink(dest);
     const resolved = resolve(dirname(dest), existing);
-    if (resolved === helperPackageDir || existing === helperPackageDir) {
+    if (resolved === helperDir || existing === helperDir) {
       return root;
     }
   } catch {
@@ -69,7 +63,7 @@ export async function ensureHelperPackagePath(): Promise<string> {
 
   await rm(dest, { recursive: true, force: true });
   try {
-    await symlink(helperPackageDir, dest);
+    await symlink(helperDir, dest);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "EEXIST") {
       throw error;

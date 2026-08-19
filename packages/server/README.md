@@ -2,8 +2,6 @@
 
 A Storybook-like local workbench for Typst package authors. Write `*.story.typ` files, run `typstbook dev`, and isolate-compile functions, templates, set/show rules, pages, and math while editing args.
 
-The UI is React + TypeScript + Vite + [SEED Design](https://seed-design.io/react/getting-started/installation/vite) + Tailwind CSS.
-
 ## Requirements
 
 - Node.js 22+
@@ -22,15 +20,11 @@ Or without a global install:
 npx typstbook dev
 ```
 
-## Quick start (from this repo)
+Point it at a Typst package directory:
 
 ```bash
-npm install
-npm run dev -- examples/demo-pkg
-npm run dev -- examples/kice-korean
+typstbook dev ./my-pkg
 ```
-
-Then open the printed local URL. `demo-pkg` has callout, resume template, and math stories. `kice-korean` has KICE-style Korean reading exam components (passages, questions, `<보기>`, inline marks).
 
 ## Write a story
 
@@ -53,11 +47,3 @@ Then open the printed local URL. `demo-pkg` has callout, resume template, and ma
 ```
 
 Stories are any `*.story.typ` file under the package root. Optional package-root `preview.typ` must export `#let preview(body) = { ...; body }` — typstbook applies `#show: preview` around every story so shared fonts/set/show actually take effect. v1 args are JSON-serializable values only.
-
-## Commands
-
-```bash
-typstbook dev [dir]
-npm test
-npm run build
-```
