@@ -2,7 +2,7 @@
 
 Date: 2026-08-15
 
-Typstbook is a Storybook-like local workbench for Typst package authors. Authors write Typst-native `*.story.typ` files, run `typstbook dev`, and isolate-compile functions, templates, set/show rules, pages, and math while editing args from a controls panel.
+Typstbook is a Storybook-like local workbench for Typst package authors. Authors write Typst-native `*.stories.typ` files, run `typstbook dev`, and isolate-compile functions, templates, set/show rules, pages, and math while editing args from a controls panel.
 
 ## Goals
 
@@ -21,21 +21,21 @@ Static site build, WASM backend, JS CSF adapter, content/markup controls, visual
 Four pieces:
 
 1. **Typst helper package** (`packages/typstbook`) — `#story`, `#render-story`, `#emit-stories`.
-2. **Extractor** — discover `*.story.typ`, run `typst eval` (not deprecated `typst query`), emit Story IR.
+2. **Extractor** — discover `*.stories.typ`, run `typst eval` (not deprecated `typst query`), emit Story IR.
 3. **Render backend** — `compile({ file, title, args, page }) → { pages, diagnostics }`. v1 spawns `typst compile` to SVG with a `{p}` page template.
 4. **Dev server + UI** — file watch, WebSocket, sidebar / canvas / controls.
 
 UI stack: React + TypeScript + Vite + Tailwind CSS + shadcn/ui. Linear-inspired dark workbench chrome.
 
 ```
-*.story.typ → Extractor (typst eval) → Story IR → UI
+*.stories.typ → Extractor (typst eval) → Story IR → UI
                                       ↓
                          args change → Render backend → SVG pages → UI
 ```
 
 ## Story format
 
-Authors write `#story(...)` at the top level of `**/*.story.typ`. Multiple stories per file are allowed. `story()` registers into a document-wide state; the workbench `#include`s the file and then calls `emit-stories` or `render-story`.
+Authors write `#story(...)` at the top level of `**/*.stories.typ`. Multiple stories per file are allowed. `story()` registers into a document-wide state; the workbench `#include`s the file and then calls `emit-stories` or `render-story`.
 
 ```typ
 #import "@preview/typstbook:0.1.0": story
@@ -58,7 +58,7 @@ Authors write `#story(...)` at the top level of `**/*.story.typ`. Multiple stori
 - `page` is applied from the registered Typst value during render. Templates that set their own page win.
 - v1 args are JSON-serializable: strings, numbers, booleans, hex colors, and nested arrays/dictionaries.
 - Omitted `arg-types` are inferred from default arg JSON types (`text` / `number` / `boolean` / `color`).
-- Story id: `{posix-path-without-.story.typ}--{title-slug}`.
+- Story id: `{posix-path-without-.stories.typ}--{title-slug}`.
 - Optional package-root `preview.typ` exports `#let preview(body) = { ...; body }`. The workbench applies `#show: preview` on every extract/render so shared fonts and set/show rules wrap story content. Missing file is skipped.
 - Bare top-level `#set` in `preview.typ` alone does not affect stories (Typst include scoping); put rules inside `preview`.
 
@@ -69,7 +69,7 @@ Authors write `#story(...)` at the top level of `**/*.story.typ`. Multiple stori
 ```json
 {
   "id": "stories/callout--warning",
-  "file": "stories/callout.story.typ",
+  "file": "stories/callout.stories.typ",
   "title": "Warning",
   "args": { "title": "주의", "variant": "warning" },
   "argTypes": {

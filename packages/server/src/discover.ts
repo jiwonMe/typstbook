@@ -1,6 +1,6 @@
 import { readdir } from "node:fs/promises";
 import { join, relative } from "node:path";
-import { toPosix } from "./ir.ts";
+import { isStoryFile, toPosix } from "./ir.ts";
 
 const SKIP_DIRS = new Set([
   "node_modules",
@@ -24,7 +24,7 @@ export async function discoverStoryFiles(root: string): Promise<string[]> {
         await walk(full);
         continue;
       }
-      if (entry.isFile() && entry.name.endsWith(".story.typ")) {
+      if (entry.isFile() && isStoryFile(entry.name)) {
         found.push(toPosix(relative(root, full)));
       }
     }

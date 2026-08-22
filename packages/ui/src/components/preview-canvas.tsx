@@ -5,8 +5,9 @@ import {
   IconSquareSplitedVerticalLeftLine,
 } from "@karrotmarket/react-monochrome-icon";
 import { Box, HStack, Icon, Text, VStack } from "@seed-design/react";
-import type { ReactNode } from "react";
+import { useEffect, useLayoutEffect, useState, type ReactNode } from "react";
 import { ErrorCallout } from "@/components/error-callout";
+import { usePreviewViewport } from "@/hooks/use-preview-viewport";
 import type { ControlsPlacement } from "@/lib/controls-placement";
 import { shortPath, type StoryIR } from "@/lib/types";
 import { ActionButton } from "seed-design/ui/action-button";
@@ -36,6 +37,28 @@ export function PreviewCanvas({
   onZoom,
   onControlsPlacement,
 }: PreviewCanvasProps) {
+  const { viewportRef, worldRef, innerRef } = usePreviewViewport(zoom, onZoom);
+  const [natural, setNatural] = useState({ width: 0, height: 0 });
+
+  useLayoutEffect(() => {
+    const inner = innerRef.current;
+    if (!inner) {
+      setNatural({ width: 0, height: 0 });
+      return;
+    }
+    const measure = () => {
+      setNatural({ width: inner.offsetWidth, height: inner.offsetHeight });
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(inner);
+    return () => observer.disconnect();
+  }, [innerRef, pages, selected?.id]);
+
+  useEffect(() => {
+    viewportRef.current?.scrollTo(0, 0);
+  }, [selected?.id, viewportRef]);
+
   return (
     <VStack height="full" minWidth="0" bg="bg.layerBasement">
       <HStack
@@ -131,51 +154,85 @@ export function PreviewCanvas({
         </ToolbarGroup>
       </HStack>
 
-      <Box data-print-root flexGrow overflowY="auto" px="x6" pt="x7" pb="x10">
-        <VStack align="center" gap="x3_5" width="max-content" maxWidth="full" mx="auto">
-          {diagnostics.length > 0 ? (
-            <Box data-print-hide width="full" maxWidth="640px">
-              <ErrorCallout
-                title="Compile error"
-                description={diagnostics.join("\n\n")}
-              />
-            </Box>
-          ) : null}
-          {pages.length > 0 ? (
-            pages.map((pageSvg, index) => (
+      <Box
+        ref={viewportRef}
+        data-print-root
+        flexGrow
+        minWidth="0"
+        minHeight="0"
+        px="x6"
+        pt="x7"
+        pb="x10"
+        style={{ overflow: "auto", overscrollBehavior: "contain", touchAction: "pan-x pan-y" }}
+      >
+        {diagnostics.length > 0 ? (
+          <Box data-print-hide width="full" maxWidth="640px" mx="auto" mb="x4">
+            <ErrorCallout
+              title="Compile error"
+              description={diagnostics.join("\n\n")}
+            />
+          </Box>
+        ) : null}
+        {pages.length > 0 ? (
+          <Box
+            style={{
+              minWidth: "100%",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "flex-start",
+            }}
+          >
+            <Box
+              ref={worldRef}
+              data-print-world
+              style={{
+                width: natural.width ? natural.width * zoom : undefined,
+                height: natural.height ? natural.height * zoom : undefined,
+              }}
+            >
               <Box
-                key={index}
-                data-print-page
-                data-seed-color-mode="light-only"
-                bg="bg.layerDefault"
-                borderRadius="r2"
-                overflowX="hidden"
-                overflowY="hidden"
-                borderWidth={1}
-                borderColor="stroke.neutralSubtle"
+                ref={innerRef}
+                data-print-world
                 style={{
                   transform: `scale(${zoom})`,
-                  transformOrigin: "top center",
-                  opacity: previewError ? 0.4 : 1,
+                  transformOrigin: "top left",
+                  width: "max-content",
                 }}
-                dangerouslySetInnerHTML={{ __html: pageSvg }}
-              />
-            ))
-          ) : diagnostics.length === 0 ? (
-            <Box data-print-hide maxWidth="360px" py="x12" px="x4">
-              <Text
-                as="p"
-                textStyle="t4Regular"
-                color="fg.neutralMuted"
-                align="center"
               >
-                {storyCount
-                  ? "Select a story to preview."
-                  : "No stories found. Add a *.story.typ file and wait for refresh."}
-              </Text>
+                <VStack align="center" gap="x3_5">
+                  {pages.map((pageSvg, index) => (
+                    <Box
+                      key={index}
+                      data-print-page
+                      data-seed-color-mode="light-only"
+                      bg="bg.layerDefault"
+                      borderRadius="r2"
+                      overflowX="hidden"
+                      overflowY="hidden"
+                      borderWidth={1}
+                      borderColor="stroke.neutralSubtle"
+                      style={{ opacity: previewError ? 0.4 : 1 }}
+                      dangerouslySetInnerHTML={{ __html: pageSvg }}
+                    />
+                  ))}
+                </VStack>
+              </Box>
             </Box>
-          ) : null}
-        </VStack>
+          </Box>
+        ) : diagnostics.length === 0 ? (
+          <Box data-print-hide maxWidth="360px" py="x12" px="x4" mx="auto">
+            <Text
+              as="p"
+              textStyle="t4Regular"
+              color="fg.neutralMuted"
+              align="center"
+            >
+              {storyCount
+                ? "Select a story to preview."
+                : "No stories found. Add a *.stories.typ file and wait for refresh."}
+            </Text>
+          </Box>
+        ) : null}
       </Box>
     </VStack>
   );

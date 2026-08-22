@@ -3,11 +3,12 @@
 [![npm](https://img.shields.io/npm/v/typstbook)](https://www.npmjs.com/package/typstbook)
 [![license](https://img.shields.io/npm/l/typstbook)](https://github.com/jiwonMe/typstbook/blob/main/LICENSE)
 
-A Storybook-like local workbench for [Typst](https://typst.app) package authors. Write `*.story.typ` files, run `typstbook dev`, and isolate-compile functions, templates, set/show rules, pages, and math while you edit args.
+A Storybook-like local workbench for [Typst](https://typst.app) package authors. Write `*.stories.typ` files, run `typstbook dev`, and isolate-compile functions, templates, set/show rules, pages, and math while you edit args.
 
 ```bash
 npm install -g typstbook
-typstbook dev
+typstbook init my-pkg
+typstbook dev my-pkg
 ```
 
 Open the printed `local` URL. Stories appear in the sidebar; the canvas renders each one as multi-page SVG through your local `typst` CLI.
@@ -21,21 +22,22 @@ Open the printed `local` URL. Stories appear in the sidebar; the canvas renders 
 
 ```bash
 npm install -g typstbook
-typstbook dev            # current directory
-typstbook dev ./my-pkg   # a Typst package root
+typstbook init my-pkg    # new package, or add stories to an existing one
+typstbook dev my-pkg
 ```
 
 Without a global install:
 
 ```bash
-npx typstbook dev ./my-pkg
+npx typstbook init my-pkg
+npx typstbook dev my-pkg
 ```
 
 Default port is `4400`. Override with `TYPSTBOOK_PORT`.
 
 ## Write a story
 
-Any `*.story.typ` file under the package root is a story file. One file can declare several stories. typstbook injects the helper package locally — you do not need to publish `@preview/typstbook` to Universe.
+Any `*.stories.typ` file under the package root is a story file. One file can declare several stories. typstbook injects the helper package locally — you do not need to publish `@preview/typstbook` to Universe.
 
 ```typ
 #import "@preview/typstbook:0.1.0": story
@@ -111,14 +113,15 @@ Optional package-root `preview.typ` wraps every extract and render with `#show: 
 ## CLI
 
 ```bash
+typstbook init [dir]
 typstbook dev [dir]
 ```
 
-`dir` defaults to the current working directory. It should be a Typst package root (the directory that contains `typst.toml` and your `*.story.typ` files).
+`dir` defaults to the current working directory. `init` writes `typst.toml`, `src/lib.typ`, `preview.typ`, and `stories/hello.stories.typ` when they are missing — it never overwrites. `dev` serves a package root that already has `typst.toml` and `*.stories.typ` files.
 
 ## Status
 
-v1 is `typstbook dev` only. Static docs sites, WASM render, JS CSF stories, visual regression, PDF download, and Typst Universe publishing are later.
+v1 is `typstbook init` and `typstbook dev`. Static docs sites, WASM render, JS CSF stories, visual regression, PDF download, and Typst Universe publishing are later.
 
 Source and examples: [github.com/jiwonMe/typstbook](https://github.com/jiwonMe/typstbook).
 

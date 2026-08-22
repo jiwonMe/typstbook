@@ -1,9 +1,12 @@
 import { spawn } from "node:child_process";
 import { mkdir, readlink, rm, symlink } from "node:fs/promises";
 import { delimiter, dirname, join, resolve } from "node:path";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { existsSync } from "node:fs";
 import { resolveHelperPackageDir } from "./paths.ts";
+
+export const HELPER_PACKAGE_VERSION = "0.1.0";
+export const HELPER_PACKAGE_SPEC = `@preview/typstbook:${HELPER_PACKAGE_VERSION}`;
 
 export const TYPST_MISSING_MESSAGE =
   "typstbook: `typst` was not found on PATH. Install Typst from https://github.com/typst/typst#installation and try again.";
@@ -45,17 +48,40 @@ export async function requireTypstBinary(): Promise<string> {
   return typst;
 }
 
-export async function ensureHelperPackagePath(): Promise<string> {
+export function typstPackageCacheDir(): string {
+  switch (process.platform) {
+    case "darwin":
+      return join(homedir(), "Library", "Caches", "typst", "packages");
+    case "win32":
+      return join(
+        process.env.LOCALAPPDATA ?? join(homedir(), "AppData", "Local"),
+        "typst",
+        "packages",
+      );
+    default:
+      return join(
+        process.env.XDG_CACHE_HOME ?? join(homedir(), ".cache"),
+        "typst",
+        "packages",
+      );
+  }
+}
+
+export type EnsureHelperOptions = {
+  /** Extra Typst package-cache root (`preview/typstbook/<version>`). */
+  cacheDir?: string | null;
+};
+
+export async function linkHelperPackage(packageRoot: string): Promise<void> {
   const helperDir = resolveHelperPackageDir();
-  const root = join(tmpdir(), "typstbook-packages");
-  const dest = join(root, "preview", "typstbook", "0.1.0");
+  const dest = join(packageRoot, "preview", "typstbook", HELPER_PACKAGE_VERSION);
   await mkdir(dirname(dest), { recursive: true });
 
   try {
     const existing = await readlink(dest);
     const resolved = resolve(dirname(dest), existing);
     if (resolved === helperDir || existing === helperDir) {
-      return root;
+      return;
     }
   } catch {
     // Missing or not a symlink — recreate below.
@@ -68,6 +94,18 @@ export async function ensureHelperPackagePath(): Promise<string> {
     if ((error as NodeJS.ErrnoException).code !== "EEXIST") {
       throw error;
     }
+  }
+}
+
+export async function ensureHelperPackagePath(
+  options: EnsureHelperOptions = {},
+): Promise<string> {
+  const root = join(tmpdir(), "typstbook-packages");
+  await linkHelperPackage(root);
+  const cacheDir =
+    options.cacheDir === undefined ? typstPackageCacheDir() : options.cacheDir;
+  if (cacheDir) {
+    await linkHelperPackage(cacheDir);
   }
   return root;
 }

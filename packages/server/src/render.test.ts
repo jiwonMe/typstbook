@@ -8,28 +8,36 @@ import {
   findTypstBinary,
 } from "./typst.ts";
 
-const demoRoot = join(
+const examplesRoot = join(
   dirname(fileURLToPath(import.meta.url)),
   "..",
   "..",
   "..",
   "examples",
-  "demo-pkg",
 );
+const demoRoot = join(examplesRoot, "demo-pkg");
+const kiceRoot = join(examplesRoot, "kice-korean");
+
+function svgSize(svg: string): { width: number; height: number } {
+  return {
+    width: Number(/width="([\d.]+)pt"/.exec(svg)?.[1]),
+    height: Number(/height="([\d.]+)pt"/.exec(svg)?.[1]),
+  };
+}
 
 describe("renderWrapperSource", () => {
   it("includes the story file and decodes args", () => {
-    const source = renderWrapperSource("stories/callout.story.typ");
-    assert.match(source, /#include "\/stories\/callout\.story\.typ"/);
+    const source = renderWrapperSource("stories/callout.stories.typ");
+    assert.match(source, /#include "\/stories\/callout\.stories\.typ"/);
     assert.match(source, /decode-args/);
     assert.doesNotMatch(source, /#include "\/preview\.typ"/);
   });
 
   it("optionally wraps stories with package-root preview.typ", () => {
-    const source = renderWrapperSource("stories/callout.story.typ", true);
+    const source = renderWrapperSource("stories/callout.stories.typ", true);
     assert.match(source, /#import "\/preview\.typ": preview/);
     assert.match(source, /#show: preview/);
-    assert.match(source, /#include "\/stories\/callout\.story\.typ"/);
+    assert.match(source, /#include "\/stories\/callout\.stories\.typ"/);
   });
 });
 
@@ -47,7 +55,7 @@ describe("compileStory", () => {
         packagePath: await ensureHelperPackagePath(),
       },
       {
-        file: "stories/callout.story.typ",
+        file: "stories/callout.stories.typ",
         title: "Warning",
         args: { title: "주의", variant: "warning" },
         page: { paper: "a6", margin: "12pt" },
@@ -55,5 +63,87 @@ describe("compileStory", () => {
     );
     assert.equal(compiled.pages.length, 1, compiled.diagnostics.join("\n"));
     assert.match(compiled.pages[0] ?? "", /<svg/i);
+  });
+
+  it("applies the story page paper size to compiled SVG", async (t) => {
+    const typst = findTypstBinary();
+    if (!typst) {
+      t.skip("typst is not on PATH");
+      return;
+    }
+    const compiled = await compileStory(
+      {
+        typst,
+        packageRoot: demoRoot,
+        packagePath: await ensureHelperPackagePath(),
+      },
+      {
+        file: "stories/callout.stories.typ",
+        title: "Warning",
+        args: { title: "주의", variant: "warning" },
+        page: { paper: "a6", margin: "12pt" },
+      },
+    );
+    assert.equal(compiled.pages.length, 1, compiled.diagnostics.join("\n"));
+    const { width, height } = svgSize(compiled.pages[0] ?? "");
+    // A6 is 105mm × 148mm. Default A4 would be ~595 × 842.
+    assert.ok(width > 297 && width < 298, `expected A6 width, got ${width}`);
+    assert.ok(height > 419 && height < 420, `expected A6 height, got ${height}`);
+  });
+
+  it("applies an A5 story page size", async (t) => {
+    const typst = findTypstBinary();
+    if (!typst) {
+      t.skip("typst is not on PATH");
+      return;
+    }
+    const compiled = await compileStory(
+      {
+        typst,
+        packageRoot: kiceRoot,
+        packagePath: await ensureHelperPackagePath(),
+      },
+      {
+        file: "stories/passage.stories.typ",
+        title: "단일 지문",
+        args: {
+          from: 1,
+          to: 2,
+          lead: "다음 글을 읽고 물음에 답하시오.",
+          content: "짧은 본문",
+        },
+        page: { paper: "a5", margin: "16pt" },
+      },
+    );
+    assert.equal(compiled.pages.length, 1, compiled.diagnostics.join("\n"));
+    const { width, height } = svgSize(compiled.pages[0] ?? "");
+    assert.ok(width > 419 && width < 420, `expected A5 width, got ${width}`);
+    assert.ok(height > 595 && height < 596, `expected A5 height, got ${height}`);
+  });
+
+  it("lets a template set page win when the story has no page", async (t) => {
+    const typst = findTypstBinary();
+    if (!typst) {
+      t.skip("typst is not on PATH");
+      return;
+    }
+    const compiled = await compileStory(
+      {
+        typst,
+        packageRoot: demoRoot,
+        packagePath: await ensureHelperPackagePath(),
+      },
+      {
+        file: "stories/resume.stories.typ",
+        title: "Resume / Default",
+        args: { name: "홍길동", role: "Engineer" },
+        page: null,
+      },
+    );
+    assert.equal(compiled.pages.length, 1, compiled.diagnostics.join("\n"));
+    const { width, height } = svgSize(compiled.pages[0] ?? "");
+    // resume() sets paper: "a5"
+    assert.ok(width > 419 && width < 420, `expected A5 width, got ${width}`);
+    assert.ok(height > 595 && height < 596, `expected A5 height, got ${height}`);
   });
 });

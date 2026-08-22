@@ -20,7 +20,7 @@ const demoRoot = join(
 describe("storiesFromEvalJson", () => {
   it("maps eval metadata into Story IR", () => {
     const { stories, errors } = storiesFromEvalJson(
-      "stories/callout.story.typ",
+      "stories/callout.stories.typ",
       JSON.stringify([
         {
           title: "Warning",

@@ -30,9 +30,9 @@ describe("preview helpers", () => {
   });
 
   it("applies preview before the story in eval entries", () => {
-    const source = evalEntrySource("stories/callout.story.typ", true);
+    const source = evalEntrySource("stories/callout.stories.typ", true);
     const showAt = source.indexOf("#show: preview");
-    const storyAt = source.indexOf('#include "/stories/callout.story.typ"');
+    const storyAt = source.indexOf('#include "/stories/callout.stories.typ"');
     assert.ok(showAt >= 0);
     assert.ok(storyAt > showAt);
   });

@@ -2,7 +2,7 @@ import { mkdir, readdir, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import type { CompileRequest, CompileResult } from "./types.ts";
-import { diagnosticsFromStderr, runTypst } from "./typst.ts";
+import { diagnosticsFromStderr, HELPER_PACKAGE_SPEC, runTypst } from "./typst.ts";
 import { titleSlug, toPosix } from "./ir.ts";
 import { hasPreviewFile, previewSetupSource } from "./preview.ts";
 
@@ -16,7 +16,7 @@ export function renderWrapperSource(
   storyFilePosix: string,
   includePreview = false,
 ): string {
-  return `#import "@preview/typstbook:0.1.0": render-story, decode-args
+  return `#import "${HELPER_PACKAGE_SPEC}": render-story, decode-args
 ${previewSetupSource(includePreview)}#include "/${storyFilePosix}"
 #let args = decode-args(sys.inputs.at("args"))
 #render-story(sys.inputs.at("title"), args)

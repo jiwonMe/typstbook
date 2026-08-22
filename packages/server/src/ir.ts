@@ -11,13 +11,20 @@ export function titleSlug(title: string): string {
   return slug || "story";
 }
 
+export const STORY_FILE_SUFFIX = ".stories.typ";
+
 export function toPosix(relativeFile: string): string {
   return relativeFile.split("\\").join("/");
 }
 
+export function isStoryFile(pathOrName: string): boolean {
+  const base = toPosix(pathOrName).split("/").at(-1) ?? pathOrName;
+  return base.toLowerCase().endsWith(STORY_FILE_SUFFIX);
+}
+
 export function storyId(relativeFile: string, title: string): string {
   const posix = toPosix(relativeFile);
-  const base = posix.replace(/\.story\.typ$/i, "").replace(/\.typ$/i, "");
+  const base = posix.replace(/\.stories\.typ$/i, "").replace(/\.typ$/i, "");
   return `${base}--${titleSlug(title)}`;
 }
 

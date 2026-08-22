@@ -24,10 +24,10 @@ function SidebarBrand() {
   const { collapsed } = useSideNavigationContext();
 
   return (
-    <HStack align="center" gap="x2" style={{ paddingRight: collapsed ? 0 : 44 }}>
+    <HStack align="center" gap="x1_5" style={{ paddingRight: collapsed ? 0 : 36 }}>
       <Box
-        width="x6"
-        height="x6"
+        width="x5"
+        height="x5"
         flexShrink={0}
         overflowX="hidden"
         overflowY="hidden"
@@ -36,14 +36,14 @@ function SidebarBrand() {
         <img
           src="/typstbook-logo.svg"
           alt=""
-          width={24}
-          height={24}
+          width={20}
+          height={20}
           style={{ display: "block", width: "100%", height: "100%" }}
         />
       </Box>
       {!collapsed && (
         <>
-          <Text textStyle="t5Bold" color="fg.neutral">
+          <Text textStyle="t4Bold" color="fg.neutral">
             typstbook
           </Text>
           <Badge size="medium" tone="informative" variant="weak">
@@ -68,14 +68,14 @@ export function StorySidebar({
   );
 
   return (
-    <SideNavigationRoot tone="neutral">
+    <SideNavigationRoot tone="neutral" className="typstbook-sidebar">
       <SideNavigationHeader>
         <SidebarBrand />
       </SideNavigationHeader>
       <SideNavigationTrigger />
       <SideNavigationContent>
         {stories.length === 0 && errors.length === 0 ? (
-          <Text textStyle="t4Regular" color="fg.neutralMuted" style={{ padding: 8 }}>
+          <Text textStyle="t2Regular" color="fg.neutralMuted" style={{ padding: 8 }}>
             No stories found.
           </Text>
         ) : (

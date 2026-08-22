@@ -57,7 +57,7 @@ export function ThemeSetting() {
   }
 
   return (
-    <HStack justify="center" px="x1" py="x1">
+    <HStack justify="center">
       <HStack
         align="center"
         gap="x1"

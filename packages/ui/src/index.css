@@ -40,6 +40,64 @@ body,
   height: 100%;
 }
 
+/* Side Navigation defaults are 240×44 for product apps. Workbench lists stay denser. */
+.typstbook-sidebar.seed-side-navigation__root {
+  width: 200px;
+}
+
+.typstbook-sidebar .seed-side-navigation__header {
+  min-height: var(--seed-dimension-x12);
+  padding: var(--seed-dimension-x1);
+}
+
+.typstbook-sidebar .seed-side-navigation__content {
+  padding-top: var(--seed-dimension-x1);
+  padding-inline: var(--seed-dimension-x1);
+  padding-bottom: var(--seed-dimension-x3);
+  gap: var(--seed-dimension-x1);
+}
+
+.typstbook-sidebar .seed-side-navigation__footer {
+  padding: var(--seed-dimension-x1);
+}
+
+.typstbook-sidebar .seed-side-navigation__groupLabel {
+  padding: var(--seed-dimension-x1);
+  font-size: var(--seed-font-size-t2);
+  line-height: var(--seed-line-height-t2);
+}
+
+.typstbook-sidebar .seed-side-navigation__trigger {
+  min-width: var(--seed-dimension-x8);
+  min-height: var(--seed-dimension-x8);
+  padding: var(--seed-dimension-x1_5);
+  top: var(--seed-dimension-x2);
+  right: var(--seed-dimension-x2);
+}
+
+.typstbook-sidebar .seed-side-navigation-menu-item__root {
+  height: var(--seed-dimension-x8);
+  gap: var(--seed-dimension-x2);
+  padding-inline: var(--seed-dimension-x1_5);
+  border-radius: var(--seed-radius-r2);
+}
+
+.typstbook-sidebar .seed-side-navigation-menu-item__root[data-side-navigation-state="collapsed"] {
+  height: var(--seed-dimension-x10);
+}
+
+.typstbook-sidebar .seed-side-navigation-menu-item__prefixIcon {
+  width: var(--seed-dimension-x4);
+  height: var(--seed-dimension-x4);
+}
+
+.typstbook-sidebar .seed-side-navigation-menu-item__label {
+  padding: var(--seed-dimension-x1);
+  padding-left: calc(var(--seed-dimension-x4) + var(--seed-dimension-x2));
+  font-size: var(--seed-font-size-t3);
+  line-height: var(--seed-line-height-t3);
+}
+
 @media print {
   @page {
     margin: 0;
@@ -69,6 +127,12 @@ body,
     overflow: visible !important;
     padding: 0 !important;
     background: #fff !important;
+  }
+
+  [data-print-world] {
+    width: auto !important;
+    height: auto !important;
+    transform: none !important;
   }
 
   [data-print-page] {

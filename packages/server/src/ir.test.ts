@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   inferArgTypes,
   inferControl,
+  isStoryFile,
   mergeStoryArgs,
   storyId,
   titleSlug,
@@ -22,8 +23,16 @@ describe("titleSlug", () => {
 });
 
 describe("storyId", () => {
-  it("uses the path without .story.typ", () => {
-    assert.equal(storyId("stories/callout.story.typ", "Warning"), "stories/callout--warning");
+  it("uses the path without .stories.typ", () => {
+    assert.equal(storyId("stories/callout.stories.typ", "Warning"), "stories/callout--warning");
+  });
+});
+
+describe("isStoryFile", () => {
+  it("matches only the .stories.typ suffix", () => {
+    assert.equal(isStoryFile("stories/callout.stories.typ"), true);
+    assert.equal(isStoryFile("callout.story.typ"), false);
+    assert.equal(isStoryFile("preview.typ"), false);
   });
 });
 
@@ -71,8 +80,8 @@ describe("uniquifyStoryIds", () => {
       page: null,
     });
     const result = uniquifyStoryIds([
-      story("stories/callout--warning", "stories/a.story.typ"),
-      story("stories/callout--warning", "stories/b.story.typ"),
+      story("stories/callout--warning", "stories/a.stories.typ"),
+      story("stories/callout--warning", "stories/b.stories.typ"),
     ]);
     assert.equal(result.stories[1]?.id, "stories/callout--warning--2");
     assert.equal(result.errors.length, 1);

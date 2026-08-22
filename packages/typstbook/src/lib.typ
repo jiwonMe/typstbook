@@ -41,8 +41,10 @@
   if found.render == none {
     panic("typstbook: story has no render: " + title)
   }
+  let body = (found.render)(args)
   if found.page != none {
-    set page(..found.page)
+    page(..found.page, body)
+  } else {
+    body
   }
-  (found.render)(args)
 }

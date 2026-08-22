@@ -47,7 +47,7 @@ export function mergeStoryArgs(
 }
 
 export function shortPath(file: string): string {
-  return file.replace(/\.story\.typ$/i, "").replace(/^stories\//, "");
+  return file.replace(/\.stories\.typ$/i, "").replace(/^stories\//, "");
 }
 
 export function groupStories(stories: StoryIR[]): Map<string, StoryIR[]> {

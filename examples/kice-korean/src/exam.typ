@@ -104,8 +104,8 @@
     font: serif,
     top-edge: "ascender",
     bottom-edge: "descender",
-    tracking: -0.05em,
-    stretch: 95%,
+    tracking: -0.03em,
+    stretch: 97%,
     spacing: 0.35em,
   )
   set par(justify: true, leading: 0.7em, spacing: 0.7em)

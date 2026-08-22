@@ -11,7 +11,7 @@ import type {
   ServerMessage,
   StoryIR,
 } from "./types.ts";
-import { mergeStoryArgs, toPosix } from "./ir.ts";
+import { isStoryFile, mergeStoryArgs, toPosix } from "./ir.ts";
 import { isBuiltUi, resolveUiRoot } from "./paths.ts";
 import { isPreviewPath } from "./preview.ts";
 import { serveStatic } from "./static.ts";
@@ -131,7 +131,7 @@ export class Workbench {
         rel.endsWith("/typst.toml") ||
         isPreviewPath(rel)
           ? "config"
-          : rel.endsWith(".story.typ")
+          : isStoryFile(rel)
             ? "story-file"
             : ext === ".typ"
               ? "source"
@@ -222,7 +222,7 @@ export class Workbench {
   }
 
   private async reloadFile(file: string): Promise<void> {
-    if (!file.endsWith(".story.typ")) {
+    if (!isStoryFile(file)) {
       await this.reloadAll();
       return;
     }
