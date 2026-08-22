@@ -16,7 +16,7 @@ import {
 } from "seed-design/ui/side-navigation";
 
 export function App() {
-  const { state, selectStory, setArg, setZoom } = useWorkbench();
+  const { state, selectStory, setArg, setZoom, readOnly } = useWorkbench();
   const { placement, setPlacement } = useControlsPlacement();
   const selected = state.stories.find((story) => story.id === state.selectedId);
   const pages = state.previewError ? state.lastGoodPages : state.pages;
@@ -32,6 +32,7 @@ export function App() {
             stories={state.stories}
             errors={state.errors}
             selectedId={state.selectedId}
+            badgeLabel={readOnly ? "static" : "local"}
             onSelect={(id) => selectStory(id)}
           />
         </Box>
@@ -43,6 +44,7 @@ export function App() {
             preview={
               <PreviewCanvas
                 selected={selected}
+                args={state.args}
                 pages={pages}
                 diagnostics={state.diagnostics}
                 previewError={state.previewError}
@@ -58,6 +60,7 @@ export function App() {
                 selected={selected}
                 args={state.args}
                 placement={placement}
+                readOnly={readOnly}
                 onChange={setArg}
               />
             }

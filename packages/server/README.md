@@ -45,6 +45,7 @@ Any `*.stories.typ` file under the package root is a story file. One file can de
 
 #story(
   title: "Warning",
+  description: "A callout for warnings, with a title and a fixed body.",
   args: (title: "주의", variant: "warning"),
   arg-types: (
     title: (control: "text"),
@@ -61,6 +62,7 @@ Any `*.stories.typ` file under the package root is a story file. One file can de
 | --- | --- | --- |
 | `title` | yes | Shown in the sidebar. Also used to build the story id. |
 | `render` | yes | Function of `args`. This is the compile unit. |
+| `description` | no | A short string shown under the title in the canvas header. |
 | `args` | no | Default control values. JSON-serializable only. |
 | `arg-types` | no | Override the inferred control. See below. |
 | `page` | no | Passed to `#set page(..)` for this story only. |
@@ -106,22 +108,45 @@ Optional package-root `preview.typ` wraps every extract and render with `#show: 
 
 - Sidebar lists stories by file. File-level Typst errors stay visible.
 - The canvas stacks every compiled page. Zoom, then print with the toolbar button or `⌘P` / `Ctrl+P` (chrome is hidden).
+- The `</>` toolbar button shows the story's `render:` source with the current control values substituted in, with a copy button. It updates live as you edit controls, with no recompile. Disabled when the source could not be isolated from the story file (see below).
 - Controls dock to the right or the bottom.
 - Color mode is light, dark, or system. Typst SVG pages stay on white paper either way.
 - Saving a story file, `preview.typ`, or imported sources re-extracts and recompiles.
+- Each browser tab has its own selected story and control values -- open the same `dev` server in two tabs (or share a URL) and they don't interfere. The URL (`?path=...&args=...`) captures the exact state, so copying it reproduces what you're looking at for someone else on the same server.
+
+"Show code" isolates the `render:` value from the story file's own text (not from `typst eval` output) by scanning brackets/strings/comments -- it does not fully parse Typst, so a story with unusual embedded syntax may show no code rather than a wrong one.
 
 ## CLI
 
 ```bash
 typstbook init [dir]
 typstbook dev [dir]
+typstbook test [dir] [--update]
+typstbook build [dir] [--out <dir>]
 ```
 
 `dir` defaults to the current working directory. `init` writes `typst.toml`, `src/lib.typ`, `preview.typ`, and `stories/hello.stories.typ` when they are missing — it never overwrites. `dev` serves a package root that already has `typst.toml` and `*.stories.typ` files.
 
+`test` compiles every story with its default args and compares the SVG output against snapshots committed under `__snapshots__/`. It exits non-zero on any extract error, compile error, missing snapshot, or mismatch — wire it into CI to catch breakage. `--update` (or `-u`) writes the current output as the new baseline instead of comparing.
+
+```bash
+typstbook test my-pkg            # compare against __snapshots__/, exit 1 on drift
+typstbook test my-pkg --update   # (re)write __snapshots__/ from the current output
+```
+
+Commit `__snapshots__/` alongside your stories.
+
+`build` compiles every story with its default args and writes a static, self-contained copy of the workbench to `--out` (default `./typstbook-static`, replaced on every run — don't point it at your package root). Controls become read-only (they show the default args; there is no server to recompile against), everything else — sidebar, zoom, print, "Show code" — works the same as `dev`.
+
+```bash
+typstbook build my-pkg --out docs/preview
+```
+
+Host `--out` on any static file host (GitHub Pages, Netlify, S3, a plain `python -m http.server`) — including from a sub-path. It will **not** work opened directly via `file://`: the bundle is loaded as an ES module, and Chromium-based browsers block ES modules under the `file://` origin. This is a browser limitation shared by every Vite/ESM-based static build, not something `typstbook build` can special-case around.
+
 ## Status
 
-v1 is `typstbook init` and `typstbook dev`. Static docs sites, WASM render, JS CSF stories, visual regression, PDF download, and Typst Universe publishing are later.
+v1 is `typstbook init`, `typstbook dev`, `typstbook test` (snapshot regression checks for CI), and `typstbook build` (static docs site, root/sub-path hosting only -- no `file://`). WASM render, JS CSF stories, visual regression, PDF download, and Typst Universe publishing are later.
 
 Source and examples: [github.com/jiwonMe/typstbook](https://github.com/jiwonMe/typstbook).
 

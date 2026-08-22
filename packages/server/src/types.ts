@@ -9,9 +9,12 @@ export type StoryIR = {
   id: string;
   file: string;
   title: string;
+  description: string | null;
   args: Record<string, unknown>;
   argTypes: Record<string, ArgType>;
   page: unknown;
+  /** Verbatim `render:` source (falls back to the whole `#story(...)` call), or null if it could not be isolated. */
+  source: string | null;
 };
 
 export type FileError = {
@@ -53,3 +56,31 @@ export type ClientMessage =
 export type InvalidateReason = "args" | "story-file" | "source" | "config";
 
 export type InvalidateAction = "compile" | "extract-file" | "extract-all";
+
+export type StorySnapshotStatus = "match" | "new" | "changed" | "compile-error";
+
+export type StoryCheckResult = {
+  storyId: string;
+  file: string;
+  title: string;
+  status: StorySnapshotStatus;
+  diagnostics: string[];
+  diffPages: number[];
+};
+
+export type CheckReport = {
+  fileErrors: FileError[];
+  results: StoryCheckResult[];
+  update: boolean;
+  ok: boolean;
+};
+
+export type StaticStory = StoryIR & {
+  pages: string[];
+  diagnostics: string[];
+};
+
+export type StaticSiteData = {
+  stories: StaticStory[];
+  errors: FileError[];
+};

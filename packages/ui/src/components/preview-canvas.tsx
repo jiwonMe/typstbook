@@ -1,4 +1,5 @@
 import {
+  IconArrowLeftBracketRightLine,
   IconArrowUpBracketDownLine,
   IconMinusLine,
   IconPlusLine,
@@ -6,9 +7,11 @@ import {
 } from "@karrotmarket/react-monochrome-icon";
 import { Box, HStack, Icon, Text, VStack } from "@seed-design/react";
 import { useEffect, useLayoutEffect, useState, type ReactNode } from "react";
+import { CodePanel } from "@/components/code-panel";
 import { ErrorCallout } from "@/components/error-callout";
 import { usePreviewViewport } from "@/hooks/use-preview-viewport";
 import type { ControlsPlacement } from "@/lib/controls-placement";
+import { substituteArgs } from "@/lib/snippet";
 import { shortPath, type StoryIR } from "@/lib/types";
 import { ActionButton } from "seed-design/ui/action-button";
 
@@ -16,6 +19,7 @@ const CONTROL_PLACEMENTS: ControlsPlacement[] = ["right", "bottom"];
 
 type PreviewCanvasProps = {
   selected: StoryIR | undefined;
+  args: Record<string, unknown>;
   pages: string[];
   diagnostics: string[];
   previewError: boolean;
@@ -28,6 +32,7 @@ type PreviewCanvasProps = {
 
 export function PreviewCanvas({
   selected,
+  args,
   pages,
   diagnostics,
   previewError,
@@ -39,6 +44,11 @@ export function PreviewCanvas({
 }: PreviewCanvasProps) {
   const { viewportRef, worldRef, innerRef } = usePreviewViewport(zoom, onZoom);
   const [natural, setNatural] = useState({ width: 0, height: 0 });
+  const [showCode, setShowCode] = useState(false);
+  const code =
+    showCode && selected?.source
+      ? substituteArgs(selected.source, args, selected.argTypes)
+      : null;
 
   useLayoutEffect(() => {
     const inner = innerRef.current;
@@ -83,6 +93,11 @@ export function PreviewCanvas({
           <Text as="p" textStyle="t5Bold" color="fg.neutral" maxLines={1}>
             {selected?.title ?? "typstbook"}
           </Text>
+          {selected?.description ? (
+            <Text as="p" textStyle="t2Regular" color="fg.neutralMuted" maxLines={1}>
+              {selected.description}
+            </Text>
+          ) : null}
         </Box>
         <ToolbarGroup>
           <ActionButton
@@ -142,6 +157,17 @@ export function PreviewCanvas({
         ) : null}
         <ToolbarGroup>
           <ActionButton
+            variant={showCode ? "neutralWeak" : "ghost"}
+            size="xsmall"
+            layout="iconOnly"
+            aria-label="Show code"
+            aria-pressed={showCode}
+            disabled={!selected?.source}
+            onClick={() => setShowCode((prev) => !prev)}
+          >
+            <Icon svg={<IconArrowLeftBracketRightLine />} />
+          </ActionButton>
+          <ActionButton
             variant="ghost"
             size="xsmall"
             layout="iconOnly"
@@ -173,6 +199,7 @@ export function PreviewCanvas({
             />
           </Box>
         ) : null}
+        {code !== null ? <CodePanel code={code} /> : null}
         {pages.length > 0 ? (
           <Box
             style={{

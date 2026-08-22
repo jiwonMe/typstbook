@@ -1,5 +1,6 @@
 node_modules
 dist
+typstbook-static
 packages/server/helper
 packages/server/LICENSE
 .typst-packages

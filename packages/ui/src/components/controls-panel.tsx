@@ -16,6 +16,7 @@ type ControlsPanelProps = {
   selected: StoryIR | undefined;
   args: Record<string, unknown>;
   placement: ControlsPlacement;
+  readOnly?: boolean;
   onChange: (name: string, value: unknown) => void;
 };
 
@@ -23,11 +24,13 @@ function ArgControl({
   name,
   argType,
   value,
+  readOnly,
   onChange,
 }: {
   name: string;
   argType: ArgType;
   value: unknown;
+  readOnly: boolean;
   onChange: (name: string, value: unknown) => void;
 }) {
   const control = argType.control;
@@ -38,6 +41,7 @@ function ArgControl({
           label={name}
           tone="neutral"
           size="medium"
+          disabled={readOnly}
           checked={Boolean(value)}
           onCheckedChange={(checked) => onChange(name, checked === true)}
         />
@@ -47,6 +51,7 @@ function ArgControl({
         <TextField
           label={name}
           size="medium"
+          disabled={readOnly}
           value={String(value ?? 0)}
           onValueChange={({ value: next }) => onChange(name, Number(next))}
         >
@@ -58,6 +63,7 @@ function ArgControl({
         <SelectRoot
           label={name}
           size="medium"
+          disabled={readOnly}
           value={value == null || value === "" ? [] : [String(value)]}
           onValueChange={(next) => onChange(name, next[0] ?? "")}
         >
@@ -93,13 +99,14 @@ function ArgControl({
               type="color"
               aria-label={`${name} color`}
               value={hex}
+              disabled={readOnly}
               onChange={(event) => onChange(name, event.target.value)}
               style={{
                 width: "100%",
                 height: "100%",
                 border: 0,
                 padding: 0,
-                cursor: "pointer",
+                cursor: readOnly ? "default" : "pointer",
                 background: "transparent",
               }}
             />
@@ -108,6 +115,7 @@ function ArgControl({
             <TextField
               label={name}
               size="medium"
+              disabled={readOnly}
               value={hex}
               onValueChange={({ value: next }) => onChange(name, next)}
             >
@@ -120,7 +128,7 @@ function ArgControl({
     case "text":
       if (value && typeof value === "object") {
         return (
-          <TextField label={name} size="medium">
+          <TextField label={name} size="medium" disabled={readOnly}>
             <TextFieldTextarea
               defaultValue={JSON.stringify(value, null, 2)}
               onBlur={(event) => {
@@ -139,6 +147,7 @@ function ArgControl({
         <TextField
           label={name}
           size="medium"
+          disabled={readOnly}
           value={String(value ?? "")}
           onValueChange={({ value: next }) => onChange(name, next)}
         >
@@ -156,6 +165,7 @@ export function ControlsPanel({
   selected,
   args,
   placement,
+  readOnly = false,
   onChange,
 }: ControlsPanelProps) {
   const argEntries = selected ? Object.entries(selected.argTypes) : [];
@@ -195,6 +205,7 @@ export function ControlsPanel({
                     name={name}
                     argType={argType}
                     value={args[name]}
+                    readOnly={readOnly}
                     onChange={onChange}
                   />
                 </Box>

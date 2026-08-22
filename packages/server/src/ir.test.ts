@@ -75,9 +75,11 @@ describe("uniquifyStoryIds", () => {
       id,
       file,
       title: "Warning",
+      description: null,
       args: {},
       argTypes: {},
       page: null,
+      source: null,
     });
     const result = uniquifyStoryIds([
       story("stories/callout--warning", "stories/a.stories.typ"),

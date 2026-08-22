@@ -18,6 +18,30 @@ import { serveStatic } from "./static.ts";
 import { ensureHelperPackagePath, requireTypstBinary } from "./typst.ts";
 
 const WORKBENCH_WS_PATH = "/__typstbook_ws";
+const COMPILE_DEBOUNCE_MS = 80;
+
+/** Per-tab state. Each browser tab gets its own selection/args/compile queue. */
+type ClientSession = {
+  readonly socket: WebSocket;
+  selectedId: string | null;
+  readonly argsById: Map<string, Record<string, unknown>>;
+  readonly lastGoodPages: Map<string, string[]>;
+  compiling: boolean;
+  compileQueued: boolean;
+  compileTimer: ReturnType<typeof setTimeout> | null;
+};
+
+function createSession(socket: WebSocket): ClientSession {
+  return {
+    socket,
+    selectedId: null,
+    argsById: new Map(),
+    lastGoodPages: new Map(),
+    compiling: false,
+    compileQueued: false,
+    compileTimer: null,
+  };
+}
 
 export type WorkbenchOptions = {
   packageRoot: string;
@@ -31,14 +55,10 @@ export class Workbench {
   private packagePath = "";
   private stories: StoryIR[] = [];
   private errors: FileError[] = [];
-  private readonly argsById = new Map<string, Record<string, unknown>>();
-  private readonly lastGoodPages = new Map<string, string[]>();
-  private selectedId: string | null = null;
-  private readonly clients = new Set<WebSocket>();
-  private compiling = false;
-  private compileQueued = false;
-  private compileTimer: ReturnType<typeof setTimeout> | null = null;
-  private readonly compileDebounceMs = 80;
+  private readonly sessions = new Map<WebSocket, ClientSession>();
+  private httpServer: ReturnType<typeof createServer> | null = null;
+  private wss: WebSocketServer | null = null;
+  private watcher: ReturnType<typeof watch> | null = null;
 
   constructor(options: WorkbenchOptions) {
     this.packageRoot = resolve(options.packageRoot);
@@ -51,6 +71,7 @@ export class Workbench {
     await this.reloadAll();
 
     const httpServer = createServer();
+    this.httpServer = httpServer;
     const uiRoot = resolveUiRoot();
     if (isBuiltUi(uiRoot)) {
       httpServer.on("request", (req, res) => {
@@ -78,6 +99,7 @@ export class Workbench {
     }
 
     const wss = new WebSocketServer({ noServer: true });
+    this.wss = wss;
     httpServer.on("upgrade", (request, socket, head) => {
       const pathname = new URL(request.url ?? "/", "http://127.0.0.1").pathname;
       if (pathname !== WORKBENCH_WS_PATH) {
@@ -89,17 +111,21 @@ export class Workbench {
     });
 
     wss.on("connection", (socket) => {
-      this.clients.add(socket);
+      const session = createSession(socket);
+      this.sessions.set(socket, session);
       this.send(socket, {
         type: "stories",
         stories: this.stories,
         errors: this.errors,
       });
       socket.on("message", (data) => {
-        this.onClientMessage(String(data));
+        this.onClientMessage(session, String(data));
       });
       socket.on("close", () => {
-        this.clients.delete(socket);
+        if (session.compileTimer) {
+          clearTimeout(session.compileTimer);
+        }
+        this.sessions.delete(socket);
       });
     });
 
@@ -108,7 +134,26 @@ export class Workbench {
     await new Promise<void>((resolveListen) => {
       httpServer.listen(this.port, resolveListen);
     });
-    return `http://127.0.0.1:${this.port}`;
+    const address = httpServer.address();
+    const boundPort =
+      address && typeof address === "object" ? address.port : this.port;
+    return `http://127.0.0.1:${boundPort}`;
+  }
+
+  async stop(): Promise<void> {
+    await this.watcher?.close();
+    for (const session of this.sessions.values()) {
+      session.socket.terminate();
+    }
+    this.sessions.clear();
+    this.wss?.close();
+    await new Promise<void>((resolveClose) => {
+      if (!this.httpServer) {
+        resolveClose();
+        return;
+      }
+      this.httpServer.close(() => resolveClose());
+    });
   }
 
   private watchFiles(): void {
@@ -119,6 +164,7 @@ export class Workbench {
         path.includes(`${join(this.packageRoot, ".git")}`) ||
         path.includes("/.git/"),
     });
+    this.watcher = watcher;
 
     const handle = (fullPath: string) => {
       const rel = toPosix(relative(this.packageRoot, fullPath));
@@ -154,15 +200,15 @@ export class Workbench {
     const action = invalidateFor(reason);
     switch (action) {
       case "compile":
-        this.scheduleCompile();
+        this.scheduleCompileAll();
         break;
       case "extract-file":
         await this.reloadFile(file);
-        this.scheduleCompile();
+        this.scheduleCompileAll();
         break;
       case "extract-all":
         await this.reloadAll();
-        this.scheduleCompile();
+        this.scheduleCompileAll();
         break;
       default: {
         const _exhaustive: never = action;
@@ -171,7 +217,7 @@ export class Workbench {
     }
   }
 
-  private onClientMessage(raw: string): void {
+  private onClientMessage(session: ClientSession, raw: string): void {
     let message: ClientMessage;
     try {
       message = JSON.parse(raw) as ClientMessage;
@@ -180,22 +226,22 @@ export class Workbench {
     }
     switch (message.type) {
       case "select":
-        this.selectedId = message.storyId;
+        session.selectedId = message.storyId;
         {
           const story = this.stories.find((item) => item.id === message.storyId);
           if (story) {
-            this.argsById.set(
+            session.argsById.set(
               message.storyId,
-              mergeStoryArgs(story.args, this.argsById.get(message.storyId)),
+              mergeStoryArgs(story.args, session.argsById.get(message.storyId)),
             );
           }
         }
-        void this.scheduleCompile();
+        this.scheduleCompile(session);
         break;
       case "set-args":
-        this.argsById.set(message.storyId, message.args);
-        if (this.selectedId === message.storyId) {
-          void this.scheduleCompile();
+        session.argsById.set(message.storyId, message.args);
+        if (session.selectedId === message.storyId) {
+          this.scheduleCompile(session);
         }
         break;
       default: {
@@ -213,7 +259,7 @@ export class Workbench {
     });
     this.stories = extracted.stories;
     this.errors = extracted.errors;
-    this.syncArgs();
+    this.syncAllSessions();
     this.broadcast({
       type: "stories",
       stories: this.stories,
@@ -242,7 +288,7 @@ export class Workbench {
       ...this.errors.filter((error) => error.file !== file),
       ...extracted.errors,
     ];
-    this.syncArgs();
+    this.syncAllSessions();
     this.broadcast({
       type: "stories",
       stories: this.stories,
@@ -250,58 +296,70 @@ export class Workbench {
     });
   }
 
-  private syncArgs(): void {
+  private syncAllSessions(): void {
+    for (const session of this.sessions.values()) {
+      this.syncSessionArgs(session);
+    }
+  }
+
+  private syncSessionArgs(session: ClientSession): void {
     const ids = new Set(this.stories.map((story) => story.id));
-    for (const id of this.argsById.keys()) {
+    for (const id of session.argsById.keys()) {
       if (!ids.has(id)) {
-        this.argsById.delete(id);
-        this.lastGoodPages.delete(id);
+        session.argsById.delete(id);
+        session.lastGoodPages.delete(id);
       }
     }
     for (const story of this.stories) {
-      this.argsById.set(
+      session.argsById.set(
         story.id,
-        mergeStoryArgs(story.args, this.argsById.get(story.id)),
+        mergeStoryArgs(story.args, session.argsById.get(story.id)),
       );
     }
-    if (this.selectedId && !ids.has(this.selectedId)) {
-      this.selectedId = this.stories[0]?.id ?? null;
+    if (session.selectedId && !ids.has(session.selectedId)) {
+      session.selectedId = this.stories[0]?.id ?? null;
     }
   }
 
-  private scheduleCompile(): void {
-    if (this.compileTimer) {
-      clearTimeout(this.compileTimer);
+  private scheduleCompileAll(): void {
+    for (const session of this.sessions.values()) {
+      this.scheduleCompile(session);
     }
-    this.compileTimer = setTimeout(() => {
-      this.compileTimer = null;
-      void this.compileSelected();
-    }, this.compileDebounceMs);
   }
 
-  private async compileSelected(): Promise<void> {
-    if (!this.selectedId) {
+  private scheduleCompile(session: ClientSession): void {
+    if (session.compileTimer) {
+      clearTimeout(session.compileTimer);
+    }
+    session.compileTimer = setTimeout(() => {
+      session.compileTimer = null;
+      void this.compileSelected(session);
+    }, COMPILE_DEBOUNCE_MS);
+  }
+
+  private async compileSelected(session: ClientSession): Promise<void> {
+    if (!session.selectedId) {
       return;
     }
-    if (this.compiling) {
-      this.compileQueued = true;
+    if (session.compiling) {
+      session.compileQueued = true;
       return;
     }
-    this.compiling = true;
-    const storyId = this.selectedId;
+    session.compiling = true;
+    const storyId = session.selectedId;
     try {
       const story = this.stories.find((item) => item.id === storyId);
       if (!story) {
-        this.broadcast({
+        this.send(session.socket, {
           type: "preview-error",
           storyId,
           diagnostics: [`Unknown story: ${storyId}`],
-          lastGoodPages: this.lastGoodPages.get(storyId) ?? [],
+          lastGoodPages: session.lastGoodPages.get(storyId) ?? [],
         });
         return;
       }
-      const args = mergeStoryArgs(story.args, this.argsById.get(storyId));
-      this.argsById.set(storyId, args);
+      const args = mergeStoryArgs(story.args, session.argsById.get(storyId));
+      session.argsById.set(storyId, args);
       const compiled = await compileStory(
         {
           typst: this.typst,
@@ -316,33 +374,33 @@ export class Workbench {
         },
       );
       if (compiled.pages.length === 0) {
-        this.broadcast({
+        this.send(session.socket, {
           type: "preview-error",
           storyId,
           diagnostics: compiled.diagnostics,
-          lastGoodPages: this.lastGoodPages.get(storyId) ?? [],
+          lastGoodPages: session.lastGoodPages.get(storyId) ?? [],
         });
         return;
       }
-      this.lastGoodPages.set(storyId, compiled.pages);
-      this.broadcast({
+      session.lastGoodPages.set(storyId, compiled.pages);
+      this.send(session.socket, {
         type: "preview",
         storyId,
         pages: compiled.pages,
         diagnostics: compiled.diagnostics,
       });
     } finally {
-      this.compiling = false;
-      if (this.compileQueued) {
-        this.compileQueued = false;
-        void this.compileSelected();
+      session.compiling = false;
+      if (session.compileQueued) {
+        session.compileQueued = false;
+        void this.compileSelected(session);
       }
     }
   }
 
   private broadcast(message: ServerMessage): void {
-    for (const client of this.clients) {
-      this.send(client, message);
+    for (const session of this.sessions.values()) {
+      this.send(session.socket, message);
     }
   }
 

@@ -17,10 +17,11 @@ type StorySidebarProps = {
   stories: StoryIR[];
   errors: FileError[];
   selectedId: string | null;
+  badgeLabel?: string;
   onSelect: (id: string) => void;
 };
 
-function SidebarBrand() {
+function SidebarBrand({ badgeLabel = "local" }: { badgeLabel?: string }) {
   const { collapsed } = useSideNavigationContext();
 
   return (
@@ -34,7 +35,7 @@ function SidebarBrand() {
         aria-hidden
       >
         <img
-          src="/typstbook-logo.svg"
+          src={`${import.meta.env.BASE_URL}typstbook-logo.svg`}
           alt=""
           width={20}
           height={20}
@@ -47,7 +48,7 @@ function SidebarBrand() {
             typstbook
           </Text>
           <Badge size="medium" tone="informative" variant="weak">
-            local
+            {badgeLabel}
           </Badge>
         </>
       )}
@@ -59,6 +60,7 @@ export function StorySidebar({
   stories,
   errors,
   selectedId,
+  badgeLabel,
   onSelect,
 }: StorySidebarProps) {
   const { collapsed } = useSideNavigationContext();
@@ -70,7 +72,7 @@ export function StorySidebar({
   return (
     <SideNavigationRoot tone="neutral" className="typstbook-sidebar">
       <SideNavigationHeader>
-        <SidebarBrand />
+        <SidebarBrand badgeLabel={badgeLabel} />
       </SideNavigationHeader>
       <SideNavigationTrigger />
       <SideNavigationContent>

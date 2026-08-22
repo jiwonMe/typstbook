@@ -1,6 +1,6 @@
 {
   "name": "typstbook",
-  "version": "0.1.5",
+  "version": "0.2.0",
   "description": "A Storybook-like local workbench for Typst package authors",
   "type": "module",
   "license": "MIT",
@@ -36,7 +36,7 @@
     "dev": "tsx src/cli.ts dev",
     "build": "node scripts/build.mjs",
     "prepack": "pnpm --filter @typstbook/ui build && node scripts/build.mjs",
-    "test": "tsx --test src/*.test.ts",
+    "test": "tsx --test --test-force-exit src/*.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

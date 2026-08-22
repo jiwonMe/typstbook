@@ -21,10 +21,44 @@ export type WorkbenchState = {
   connected: boolean;
 };
 
-function setPath(id: string): void {
+type StaticStory = StoryIR & { pages: string[]; diagnostics: string[] };
+type StaticSiteData = { stories: StaticStory[]; errors: FileError[] };
+
+declare global {
+  interface Window {
+    __TYPSTBOOK_STATIC__?: StaticSiteData;
+  }
+}
+
+const STATIC_DATA: StaticSiteData | undefined =
+  typeof window !== "undefined" ? window.__TYPSTBOOK_STATIC__ : undefined;
+const STATIC_STORIES_BY_ID = new Map<string, StaticStory>(
+  (STATIC_DATA?.stories ?? []).map((story) => [story.id, story]),
+);
+
+function syncUrl(id: string, args?: Record<string, unknown>): void {
   const url = new URL(location.href);
   url.searchParams.set("path", id);
+  if (args) {
+    url.searchParams.set("args", JSON.stringify(args));
+  }
   history.replaceState(null, "", url);
+}
+
+function readArgsFromUrl(): Record<string, unknown> | null {
+  const raw = new URLSearchParams(location.search).get("args");
+  if (!raw) {
+    return null;
+  }
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+  } catch {
+    // Malformed args in a shared/hand-edited URL; fall back to defaults.
+  }
+  return null;
 }
 
 function argsEqual(
@@ -39,12 +73,30 @@ function argsEqual(
   return keysA.every((key) => Object.is(a[key], b[key]));
 }
 
-export function useWorkbench() {
-  const [state, setState] = useState<WorkbenchState>(() => ({
+function initialState(): WorkbenchState {
+  if (STATIC_DATA) {
+    const requestedId = new URLSearchParams(location.search).get("path");
+    const initial =
+      STATIC_STORIES_BY_ID.get(requestedId ?? "") ?? STATIC_DATA.stories[0];
+    return {
+      stories: STATIC_DATA.stories,
+      errors: STATIC_DATA.errors,
+      selectedId: initial?.id ?? null,
+      args: initial ? { ...initial.args } : {},
+      pages: initial?.pages ?? [],
+      lastGoodPages: initial?.pages ?? [],
+      diagnostics: initial?.diagnostics ?? [],
+      previewError: false,
+      zoom: 1,
+      pageIndex: 0,
+      connected: true,
+    };
+  }
+  return {
     stories: [],
     errors: [],
     selectedId: new URLSearchParams(location.search).get("path"),
-    args: {},
+    args: readArgsFromUrl() ?? {},
     pages: [],
     lastGoodPages: [],
     diagnostics: [],
@@ -52,7 +104,11 @@ export function useWorkbench() {
     zoom: 1,
     pageIndex: 0,
     connected: false,
-  }));
+  };
+}
+
+export function useWorkbench() {
+  const [state, setState] = useState<WorkbenchState>(initialState);
   const socketRef = useRef<WebSocket | null>(null);
   const stateRef = useRef(state);
   stateRef.current = state;
@@ -71,11 +127,27 @@ export function useWorkbench() {
       if (!story) {
         return;
       }
-      setPath(id);
+      if (STATIC_DATA) {
+        syncUrl(id);
+        const staticStory = STATIC_STORIES_BY_ID.get(id);
+        setState((prev) => ({
+          ...prev,
+          selectedId: id,
+          args: resetArgs ? { ...story.args } : prev.args,
+          pages: staticStory?.pages ?? [],
+          lastGoodPages: staticStory?.pages ?? [],
+          diagnostics: staticStory?.diagnostics ?? [],
+          previewError: false,
+          pageIndex: 0,
+        }));
+        return;
+      }
+      const args = resetArgs ? { ...story.args } : stateRef.current.args;
+      syncUrl(id, args);
       setState((prev) => ({
         ...prev,
         selectedId: id,
-        args: resetArgs ? { ...story.args } : prev.args,
+        args,
         pageIndex: 0,
       }));
       send({ type: "select", storyId: id });
@@ -85,11 +157,15 @@ export function useWorkbench() {
 
   const setArg = useCallback(
     (name: string, value: unknown) => {
+      if (STATIC_DATA) {
+        return;
+      }
       setState((prev) => {
         if (!prev.selectedId) {
           return prev;
         }
         const args = { ...prev.args, [name]: value };
+        syncUrl(prev.selectedId, args);
         send({ type: "set-args", storyId: prev.selectedId, args });
         return { ...prev, args };
       });
@@ -109,6 +185,15 @@ export function useWorkbench() {
   }, []);
 
   useEffect(() => {
+    if (STATIC_DATA && stateRef.current.selectedId) {
+      syncUrl(stateRef.current.selectedId);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (STATIC_DATA) {
+      return;
+    }
     let cancelled = false;
     bootstrappedRef.current = false;
     const socket = new WebSocket(
@@ -147,7 +232,7 @@ export function useWorkbench() {
             if (!selectedStillExists) {
               const first = stories[0];
               if (first) {
-                setPath(first.id);
+                syncUrl(first.id, first.args);
                 bootstrappedRef.current = true;
                 queueMicrotask(() => {
                   if (!cancelled) {
@@ -188,14 +273,24 @@ export function useWorkbench() {
             if (needsBootstrap || argKeysChanged) {
               bootstrappedRef.current = true;
               const storyId = prev.selectedId;
+              syncUrl(storyId, args);
               queueMicrotask(() => {
                 if (cancelled) {
                   return;
                 }
-                if (argKeysChanged) {
-                  send({ type: "set-args", storyId, args });
-                } else {
+                if (needsBootstrap) {
+                  // A brand-new server session has no args recorded for this
+                  // story yet. "select" alone seeds it from bare defaults, so
+                  // a URL-restored (or otherwise non-default) value must
+                  // still follow as an explicit "set-args" -- comparing only
+                  // against `prev.args` would skip it whenever the restored
+                  // value already equals the merge result.
                   send({ type: "select", storyId });
+                  if (!argsEqual(args, current.args)) {
+                    send({ type: "set-args", storyId, args });
+                  }
+                } else if (argKeysChanged) {
+                  send({ type: "set-args", storyId, args });
                 }
               });
             }
@@ -268,5 +363,6 @@ export function useWorkbench() {
     setArg,
     setZoom,
     setPageIndex,
+    readOnly: Boolean(STATIC_DATA),
   };
 }

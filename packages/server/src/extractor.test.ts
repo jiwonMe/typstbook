@@ -24,6 +24,7 @@ describe("storiesFromEvalJson", () => {
       JSON.stringify([
         {
           title: "Warning",
+          description: "A reusable warning callout.",
           args: { title: "주의", variant: "warning" },
           "arg-types": {
             variant: { control: "select", options: ["info", "warning"] },
@@ -35,8 +36,17 @@ describe("storiesFromEvalJson", () => {
     );
     assert.equal(errors.length, 0);
     assert.equal(stories[0]?.id, "stories/callout--warning");
+    assert.equal(stories[0]?.description, "A reusable warning callout.");
     assert.equal(stories[0]?.argTypes.variant?.control, "select");
     assert.equal(stories[0]?.argTypes.title?.control, "text");
+  });
+
+  it("defaults description to null when omitted", () => {
+    const { stories } = storiesFromEvalJson(
+      "stories/callout.stories.typ",
+      JSON.stringify([{ title: "Info", "has-render": true }]),
+    );
+    assert.equal(stories[0]?.description, null);
   });
 });
 

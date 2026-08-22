@@ -1,7 +1,10 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import type { ArgType, ExtractResult, FileError, StoryIR } from "./types.ts";
 import { inferArgTypes, storyId, uniquifyStoryIds } from "./ir.ts";
 import { discoverStoryFiles } from "./discover.ts";
 import { hasPreviewFile, previewSetupSource } from "./preview.ts";
+import { extractStorySnippets } from "./source-extract.ts";
 import { diagnosticsFromStderr, HELPER_PACKAGE_SPEC, runTypst } from "./typst.ts";
 
 export type ExtractorOptions = {
@@ -12,6 +15,7 @@ export type ExtractorOptions = {
 
 type RawStory = {
   title?: unknown;
+  description?: unknown;
   args?: unknown;
   "arg-types"?: unknown;
   page?: unknown;
@@ -105,12 +109,32 @@ export function storiesFromEvalJson(
       id: storyId(file, raw.title),
       file,
       title: raw.title,
+      description: typeof raw.description === "string" ? raw.description : null,
       args,
       argTypes: inferArgTypes(args, asArgTypes(raw["arg-types"])),
       page: raw.page ?? null,
+      source: null,
     });
   }
   return { stories, errors };
+}
+
+async function attachSource(
+  packageRoot: string,
+  file: string,
+  stories: StoryIR[],
+): Promise<StoryIR[]> {
+  let snippets: Map<string, string>;
+  try {
+    const text = await readFile(join(packageRoot, file), "utf8");
+    snippets = extractStorySnippets(text);
+  } catch {
+    snippets = new Map();
+  }
+  return stories.map((story) => ({
+    ...story,
+    source: snippets.get(story.title) ?? null,
+  }));
 }
 
 export async function extractStoryFile(
@@ -149,7 +173,11 @@ export async function extractStoryFile(
     };
   }
 
-  return storiesFromEvalJson(file, result.stdout);
+  const extracted = storiesFromEvalJson(file, result.stdout);
+  return {
+    ...extracted,
+    stories: await attachSource(options.packageRoot, file, extracted.stories),
+  };
 }
 
 export async function extractAllStories(

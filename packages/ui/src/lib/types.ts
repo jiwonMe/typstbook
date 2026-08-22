@@ -9,9 +9,11 @@ export type StoryIR = {
   id: string;
   file: string;
   title: string;
+  description: string | null;
   args: Record<string, unknown>;
   argTypes: Record<string, ArgType>;
   page: unknown;
+  source: string | null;
 };
 
 export type FileError = {

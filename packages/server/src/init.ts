@@ -74,6 +74,7 @@ const CALLOUT_STORY = `#import "${HELPER_IMPORT}": story
 
 #story(
   title: "Warning",
+  description: "A callout for warnings, with a title and a fixed body.",
   args: (title: "주의", variant: "warning"),
   arg-types: (
     title: (control: "text"),

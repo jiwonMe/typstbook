@@ -49,3 +49,18 @@ export function isBuiltUi(uiRoot: string): boolean {
     !existsSync(join(uiRoot, "vite.config.ts"))
   );
 }
+
+/** Built (production) UI assets only -- never the Vite source dir. For `typstbook build`. */
+export function resolveBuiltUiRoot(): string {
+  const packaged = firstExisting([join(here, "ui")], "index.html");
+  if (packaged) {
+    return packaged;
+  }
+  const monorepoDist = join(here, "..", "..", "ui", "dist");
+  if (existsSync(join(monorepoDist, "index.html"))) {
+    return monorepoDist;
+  }
+  throw new Error(
+    "typstbook: built UI assets not found. Run `pnpm build` (or `pnpm --filter @typstbook/ui build`) first.",
+  );
+}
