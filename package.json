@@ -1,16 +1,17 @@
 {
   "name": "@typstbook/workspace",
   "private": true,
-  "workspaces": [
-    "packages/server",
-    "packages/ui"
-  ],
+  "packageManager": "pnpm@11.22.0",
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=11"
+  },
   "scripts": {
     "dev": "tsx packages/server/src/cli.ts dev",
-    "build": "npm run build -w @typstbook/ui && npm run build -w typstbook",
-    "test": "npm run test -w typstbook",
-    "typecheck": "npm run typecheck -w typstbook && npm run typecheck -w @typstbook/ui",
-    "pack:check": "npm run build && npm pack -w typstbook --dry-run"
+    "build": "pnpm --filter @typstbook/ui build && pnpm --filter typstbook build",
+    "test": "pnpm --filter typstbook test",
+    "typecheck": "pnpm --filter typstbook typecheck && pnpm --filter @typstbook/ui typecheck",
+    "pack:check": "pnpm build && pnpm --filter typstbook pack --dry-run"
   },
   "devDependencies": {
     "tsx": "^4.20.3"

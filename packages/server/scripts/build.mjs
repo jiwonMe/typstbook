@@ -10,7 +10,7 @@ const uiDist = join(pkg, "..", "ui", "dist");
 const helperSrc = join(pkg, "..", "typstbook");
 
 if (!existsSync(join(uiDist, "index.html"))) {
-  throw new Error("UI is not built. Run `npm run build -w @typstbook/ui` first.");
+  throw new Error("UI is not built. Run `pnpm --filter @typstbook/ui build` first.");
 }
 if (!existsSync(join(helperSrc, "typst.toml"))) {
   throw new Error(`Typst helper package not found at ${helperSrc}`);

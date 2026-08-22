@@ -35,7 +35,7 @@
   "scripts": {
     "dev": "tsx src/cli.ts dev",
     "build": "node scripts/build.mjs",
-    "prepack": "npm run build -w @typstbook/ui && node scripts/build.mjs",
+    "prepack": "pnpm --filter @typstbook/ui build && node scripts/build.mjs",
     "test": "tsx --test src/*.test.ts",
     "typecheck": "tsc --noEmit"
   },

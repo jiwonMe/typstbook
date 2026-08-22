@@ -61,7 +61,7 @@ async function runInit(args: string[]): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  const argv = process.argv.slice(2);
+  const argv = process.argv.slice(2).filter((arg) => arg !== "--");
   const command = parseCommand(argv[0]);
   switch (command) {
     case "dev":

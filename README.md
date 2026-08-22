@@ -123,19 +123,22 @@ typstbook dev [dir]
 
 ## Develop from this repo
 
+Requires [pnpm](https://pnpm.io) 11+ (`corepack enable` on Node.js 22+).
+
 ```bash
-npm install
-npm run dev -- examples/demo-pkg
-npm run dev -- examples/kice-korean
+corepack enable
+pnpm install
+pnpm dev examples/demo-pkg
+pnpm dev examples/kice-korean
 ```
 
 `demo-pkg` has callout, resume, and math stories. `kice-korean` is a KICE-style Korean reading exam (passages, questions, `<보기>`, commentary pages).
 
 ```bash
-npm test
-npm run typecheck
-npm run build
-npm run pack:check
+pnpm test
+pnpm typecheck
+pnpm build
+pnpm pack:check
 ```
 
 The published npm package is `typstbook` (`packages/server`). It embeds the built UI and the Typst helper. `@typstbook/ui` is not published separately. Do not publish this CLI as `typst` — that name is the official compiler.

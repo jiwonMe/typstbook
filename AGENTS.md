@@ -11,7 +11,7 @@
 - Stories are Typst-native `*.stories.typ` files using `#story(...)`; a later JS adapter should emit the same Story IR.
 - A story is an isolated Typst compile unit covering functions, templates, set/show rules, pages, and math, with no per-kind story types.
 - Extract story metadata with `typst eval` (Typst 0.15+; not deprecated `typst query`); render via the local `typst` CLI to multi-page SVG using the `{p}` output template.
-- Implementation stack is TypeScript CLI + React/Vite UI (SEED Design + Tailwind) + a Typst helper package; Story IR and a `compile()` backend interface are the extension points.
+- Implementation stack is TypeScript CLI + React/Vite UI (SEED Design + Tailwind) + a Typst helper package; Story IR and a `compile()` backend interface are the extension points. The JS monorepo uses pnpm workspaces (`pnpm-workspace.yaml`); do not use npm or commit `package-lock.json`.
 - Optional package-root `preview.typ` exports `preview(body)` and is applied with `#show: preview` on every extract/render so shared fonts/set/show wrap story content; missing file is skipped.
 - On story re-extract, merge arg defaults with live control values so new keys appear without wiping existing edits.
 - Packages: `packages/typstbook` (Typst helper), `packages/server` (npm package `typstbook`; the CLI embeds the built UI), `packages/ui` (Vite UI, not published separately), `examples/demo-pkg` for dogfooding, and `examples/kice-korean` for KICE-style Korean reading exams. Do not publish as `typst` — that name is taken and would shadow the official compiler.

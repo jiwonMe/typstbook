@@ -6,3 +6,5 @@ packages/server/LICENSE
 .DS_Store
 *.log
 .cursor
+package-lock.json
+npm-shrinkwrap.json

@@ -23,7 +23,7 @@ export function resolveHelperPackageDir(): string {
     "typst.toml",
   );
   if (!found) {
-    throw new Error("typstbook: helper package not found. Rebuild with `npm run build`.");
+    throw new Error("typstbook: helper package not found. Rebuild with `pnpm build`.");
   }
   return found;
 }
@@ -40,7 +40,7 @@ export function resolveUiRoot(): string {
   ) {
     return monorepo;
   }
-  throw new Error("typstbook: UI assets not found. Rebuild with `npm run build`.");
+  throw new Error("typstbook: UI assets not found. Rebuild with `pnpm build`.");
 }
 
 export function isBuiltUi(uiRoot: string): boolean {
