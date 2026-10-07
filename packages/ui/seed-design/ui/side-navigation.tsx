@@ -4,10 +4,8 @@
  * @requires @seed-design/css@^2.0.0
  **/
 
-import {
-  IconChevronUpSmallFill,
-  IconSquareSplitedVerticalLeftLine,
-} from "@karrotmarket/react-monochrome-icon";
+import { ChevronUpOutline18 } from "@/components/icons/ChevronUpOutline18";
+import { LayoutSidebarOutline18 } from "@/components/icons/LayoutSidebarOutline18";
 import { Icon, SideNavigation as SeedSideNavigation } from "@seed-design/react";
 import {
   NavigationMenuContent,
@@ -19,7 +17,7 @@ import {
   NavigationMenuTrigger,
 } from "./navigation-menu";
 import { HelpBubbleTooltipTriggerPortal } from "./help-bubble-tooltip";
-import { useSideNavigationContext } from "@seed-design/react/primitive";
+import { SideNavigation as SideNavigationPrimitive, useSideNavigationContext } from "@seed-design/react/primitive";
 import * as React from "react";
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -36,10 +34,11 @@ export const SideNavigationTrigger = React.forwardRef<
   return (
     <SeedSideNavigation.Trigger
       aria-label={collapsed ? "사이드바 열기" : "사이드바 닫기"}
+      title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
       ref={ref}
       {...props}
     >
-      <Icon svg={<IconSquareSplitedVerticalLeftLine />} />
+      <Icon svg={<LayoutSidebarOutline18 />} />
     </SeedSideNavigation.Trigger>
   );
 });
@@ -88,6 +87,7 @@ SideNavigationItemButton.displayName = "SideNavigationItemButton";
 
 export interface SideNavigationGroupProps {
   label?: React.ReactNode;
+  forceOpen?: boolean;
   items: ({
     key?: React.Key;
     label: React.ReactNode;
@@ -117,8 +117,9 @@ export interface SideNavigationGroupProps {
 }
 
 export const SideNavigationGroup = React.forwardRef<HTMLDivElement, SideNavigationGroupProps>(
-  ({ label, items }, ref) => {
+  ({ label, items, forceOpen = false }, ref) => {
     const { collapsed, transitioning } = useSideNavigationContext();
+    const [openGroups, setOpenGroups] = React.useState<Map<React.Key, boolean>>(() => new Map());
 
     const isFlyout = collapsed && !transitioning;
 
@@ -172,12 +173,17 @@ export const SideNavigationGroup = React.forwardRef<HTMLDivElement, SideNavigati
       return (
         <SeedSideNavigation.ItemCollapsibleRoot
           key={item.key ?? index}
-          defaultOpen={item.defaultOpen}
+          open={forceOpen || (openGroups.get(item.key ?? index) ?? item.defaultOpen ?? false)}
+          onOpenChange={(open) => setOpenGroups((previous) => {
+            const next = new Map(previous);
+            next.set(item.key ?? index, open);
+            return next;
+          })}
         >
           <SeedSideNavigation.ItemCollapsibleTrigger current={collapsed && hasCurrentChild}>
             {item.prefixIcon && <SeedSideNavigation.ItemPrefixIcon svg={item.prefixIcon} />}
             <SeedSideNavigation.ItemLabel>{item.label}</SeedSideNavigation.ItemLabel>
-            <SeedSideNavigation.ItemSuffixIcon svg={<IconChevronUpSmallFill />} />
+            <SeedSideNavigation.ItemSuffixIcon svg={<ChevronUpOutline18 />} />
           </SeedSideNavigation.ItemCollapsibleTrigger>
           <SeedSideNavigation.ItemCollapsibleContent>
             {item.items.map((sub, subIndex) => (
@@ -205,7 +211,9 @@ export const SideNavigationGroup = React.forwardRef<HTMLDivElement, SideNavigati
 SideNavigationGroup.displayName = "SideNavigationGroup";
 
 export interface SideNavigationProviderProps extends SeedSideNavigation.ProviderProps {}
-export const SideNavigationProvider = SeedSideNavigation.Provider;
+// App owns container-based responsiveness; the styled provider also changes
+// collapse state at viewport breakpoints, which overwrites the user's preference.
+export const SideNavigationProvider = SideNavigationPrimitive.Provider;
 
 export interface SideNavigationRootProps extends SeedSideNavigation.RootProps {}
 export const SideNavigationRoot = React.forwardRef<HTMLElement, SideNavigationRootProps>(

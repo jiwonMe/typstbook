@@ -1,8 +1,6 @@
-import {
-  IconCheckmarkClipboardFill,
-  IconCheckmarkClipboardLine,
-} from "@karrotmarket/react-monochrome-icon";
-import { Box, Icon } from "@seed-design/react";
+import { CheckOutline18 } from "@/components/icons/CheckOutline18";
+import { CopyOutline18 } from "@/components/icons/CopyOutline18";
+import { Box, HStack, PrefixIcon, Text } from "@seed-design/react";
 import { useState } from "react";
 import { ActionButton } from "seed-design/ui/action-button";
 
@@ -33,17 +31,26 @@ export function CodePanel({ code }: CodePanelProps) {
       maxWidth="720px"
       mx="auto"
       mb="x4"
-      borderRadius="r3"
+      borderRadius="r2"
       borderWidth={1}
       borderColor="stroke.neutralSubtle"
       bg="bg.layerDefault"
       overflowX="hidden"
       overflowY="hidden"
     >
+      <HStack justify="space-between" align="center" px="x3" py="x1"
+        borderBottomWidth={1} borderColor="stroke.neutralSubtle">
+        <Text textStyle="t2Medium" color="fg.neutralMuted">Typst source</Text>
+        <ActionButton variant="ghost" size="xsmall"
+          aria-label={copied ? "Copied" : "Copy code"} onClick={copy}>
+          <PrefixIcon svg={copied ? <CheckOutline18 /> : <CopyOutline18 />} />
+          {copied ? "Copied" : "Copy"}
+        </ActionButton>
+      </HStack>
       <Box
         as="pre"
-        px="x4"
-        py="x3"
+        px="x3"
+        py="x2"
         style={{
           margin: 0,
           maxHeight: 280,
@@ -56,21 +63,6 @@ export function CodePanel({ code }: CodePanelProps) {
         }}
       >
         {code}
-      </Box>
-      <Box position="absolute" top="8px" right="8px">
-        <ActionButton
-          variant="ghost"
-          size="xsmall"
-          layout="iconOnly"
-          aria-label={copied ? "Copied" : "Copy code"}
-          onClick={copy}
-        >
-          <Icon
-            svg={
-              copied ? <IconCheckmarkClipboardFill /> : <IconCheckmarkClipboardLine />
-            }
-          />
-        </ActionButton>
       </Box>
     </Box>
   );

@@ -130,3 +130,62 @@ describe("Workbench multi-client isolation", () => {
     }
   });
 });
+
+describe("PDF export", () => {
+  it("returns a downloadable PDF for a valid story", async (t) => {
+    if (!findTypstBinary()) {
+      t.skip("typst is not on PATH");
+      return;
+    }
+    const workbench = new Workbench({ packageRoot: demoRoot, port: 0 });
+    const url = await workbench.start();
+    try {
+      const response = await fetch(`${url}/__typstbook_pdf`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          file: "stories/callout.stories.typ",
+          title: "Warning",
+          args: { title: "주의", variant: "warning" },
+          page: { paper: "a6", margin: "12pt" },
+        }),
+      });
+      assert.equal(response.status, 200);
+      assert.equal(response.headers.get("content-type"), "application/pdf");
+      assert.match(
+        response.headers.get("content-disposition") ?? "",
+        /attachment; filename="warning\.pdf"/,
+      );
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      assert.equal(Buffer.from(bytes.subarray(0, 5)).toString(), "%PDF-");
+    } finally {
+      await workbench.stop();
+    }
+  });
+
+  it("responds with diagnostics instead of a PDF on a compile error", async (t) => {
+    if (!findTypstBinary()) {
+      t.skip("typst is not on PATH");
+      return;
+    }
+    const workbench = new Workbench({ packageRoot: demoRoot, port: 0 });
+    const url = await workbench.start();
+    try {
+      const response = await fetch(`${url}/__typstbook_pdf`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          file: "stories/callout.stories.typ",
+          title: "does-not-exist",
+          args: {},
+          page: null,
+        }),
+      });
+      assert.equal(response.status, 422);
+      const body = (await response.json()) as { diagnostics: string[] };
+      assert.ok(body.diagnostics.length > 0);
+    } finally {
+      await workbench.stop();
+    }
+  });
+});

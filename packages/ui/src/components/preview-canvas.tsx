@@ -1,19 +1,22 @@
-import {
-  IconArrowLeftBracketRightLine,
-  IconArrowUpBracketDownLine,
-  IconMinusLine,
-  IconPlusLine,
-  IconSquareSplitedVerticalLeftLine,
-} from "@karrotmarket/react-monochrome-icon";
-import { Box, HStack, Icon, Text, VStack } from "@seed-design/react";
-import { useEffect, useLayoutEffect, useState, type ReactNode } from "react";
+import { DownloadOutline18 } from "@/components/icons/DownloadOutline18";
+import { CodeOutline18 } from "@/components/icons/CodeOutline18";
+import { PrintOutline18 } from "@/components/icons/PrintOutline18";
+import { MinusOutline18 } from "@/components/icons/MinusOutline18";
+import { PlusOutline18 } from "@/components/icons/PlusOutline18";
+import { LayoutRightOutline18 } from "@/components/icons/LayoutRightOutline18";
+import { LayoutBottomOutline18 } from "@/components/icons/LayoutBottomOutline18";
+import { Box, HStack, Icon, PrefixIcon, Text, VStack } from "@seed-design/react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { CodePanel } from "@/components/code-panel";
 import { ErrorCallout } from "@/components/error-callout";
 import { usePreviewViewport } from "@/hooks/use-preview-viewport";
+import type { PdfDownloadResult } from "@/hooks/use-workbench";
 import type { ControlsPlacement } from "@/lib/controls-placement";
 import { substituteArgs } from "@/lib/snippet";
 import { shortPath, type StoryIR } from "@/lib/types";
 import { ActionButton } from "seed-design/ui/action-button";
+
+import { fitZoom, readZoomMode, type ZoomMode } from "@/lib/preview-fit";
 
 const CONTROL_PLACEMENTS: ControlsPlacement[] = ["right", "bottom"];
 
@@ -28,6 +31,9 @@ type PreviewCanvasProps = {
   controlsPlacement: ControlsPlacement;
   onZoom: (zoom: number) => void;
   onControlsPlacement: (placement: ControlsPlacement) => void;
+  onDownloadPdf: () => Promise<PdfDownloadResult>;
+  leading?: ReactNode;
+  compact?: boolean;
 };
 
 export function PreviewCanvas({
@@ -41,23 +47,47 @@ export function PreviewCanvas({
   controlsPlacement,
   onZoom,
   onControlsPlacement,
+  onDownloadPdf,
+  leading,
+  compact = false,
 }: PreviewCanvasProps) {
-  const { viewportRef, worldRef, innerRef } = usePreviewViewport(zoom, onZoom);
-  const [natural, setNatural] = useState({ width: 0, height: 0 });
+  const [zoomMode, setZoomMode] = useState<ZoomMode>(readZoomMode);
+  const manualZoom = useCallback((next: number) => {
+    setZoomMode("manual");
+    onZoom(next);
+  }, [onZoom]);
+  const { viewportRef, worldRef, innerRef } = usePreviewViewport(zoom, manualZoom);
+  const zoomRef = useRef(zoom);
+  zoomRef.current = zoom;
+  const [natural, setNatural] = useState({ width: 0, height: 0, pageWidth: 0, pageHeight: 0 });
   const [showCode, setShowCode] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
   const code =
     showCode && selected?.source
       ? substituteArgs(selected.source, args, selected.argTypes)
       : null;
 
+  const handleDownloadPdf = async () => {
+    setPdfBusy(true);
+    setPdfError(null);
+    const result = await onDownloadPdf();
+    setPdfBusy(false);
+    if (!result.ok) {
+      setPdfError(result.diagnostics.join("\n"));
+    }
+  };
+
   useLayoutEffect(() => {
     const inner = innerRef.current;
     if (!inner) {
-      setNatural({ width: 0, height: 0 });
+      setNatural({ width: 0, height: 0, pageWidth: 0, pageHeight: 0 });
       return;
     }
     const measure = () => {
-      setNatural({ width: inner.offsetWidth, height: inner.offsetHeight });
+      const firstPage = inner.querySelector<HTMLElement>("[data-print-page]");
+      setNatural({ width: inner.offsetWidth, height: inner.offsetHeight,
+        pageWidth: firstPage?.offsetWidth ?? 0, pageHeight: firstPage?.offsetHeight ?? 0 });
     };
     measure();
     const observer = new ResizeObserver(measure);
@@ -66,32 +96,64 @@ export function PreviewCanvas({
   }, [innerRef, pages, selected?.id]);
 
   useEffect(() => {
+    try { localStorage.setItem("typstbook-zoom-mode", zoomMode); } catch { /* Optional preference. */ }
+  }, [zoomMode]);
+
+  useLayoutEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport || zoomMode === "manual") return;
+    const update = () => {
+      const style = getComputedStyle(viewport);
+      const width = viewport.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+      const height = viewport.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+      const next = fitZoom(zoomMode, width, height,
+        zoomMode === "width" ? natural.width : natural.pageWidth, natural.pageHeight);
+      if (next !== null && Math.abs(next - zoomRef.current) > 0.0001) onZoom(next);
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(viewport);
+    return () => observer.disconnect();
+  }, [zoomMode, natural, onZoom, viewportRef]);
+
+  useLayoutEffect(() => {
+    if (zoomMode !== "page") return;
+    const viewport = viewportRef.current;
+    const world = worldRef.current;
+    if (!viewport || !world) return;
+    // Fit page refers to the first page, including when source is open above it.
+    viewport.scrollTo({ left: 0, top: viewport.scrollTop + world.getBoundingClientRect().top
+      - viewport.getBoundingClientRect().top - parseFloat(getComputedStyle(viewport).paddingTop) });
+  }, [zoomMode, zoom, selected?.id, viewportRef, worldRef]);
+
+  useEffect(() => {
     viewportRef.current?.scrollTo(0, 0);
   }, [selected?.id, viewportRef]);
 
+  useEffect(() => {
+    setPdfError(null);
+  }, [selected?.id]);
+
   return (
-    <VStack height="full" minWidth="0" bg="bg.layerBasement">
+    <VStack height="full" minWidth="0" bg="bg.layerFill">
       <HStack
         data-print-hide
+        className="typstbook-preview-header"
         align="center"
-        gap="x2"
-        px="x4"
-        py="x2"
+        gap="x3"
+        px="x3"
+        py="x1"
         bg="bg.layerDefault"
         borderBottomWidth={1}
         borderColor="stroke.neutralSubtle"
       >
-        <Box flexGrow minWidth="0">
-          <Text
-            as="p"
-            textStyle="t2Regular"
-            color="fg.neutralMuted"
-            maxLines={1}
-          >
-            {selected ? shortPath(selected.file) : "No story selected"}
+        {leading}
+        <Box className="typstbook-story-heading" minWidth="0">
+          <Text as="p" textStyle="t2Regular" color="fg.neutralSubtle" maxLines={1}>
+            {selected ? `${shortPath(selected.file)}.stories.typ` : "Workspace"}
           </Text>
-          <Text as="p" textStyle="t5Bold" color="fg.neutral" maxLines={1}>
-            {selected?.title ?? "typstbook"}
+          <Text as="h1" textStyle="t4Bold" color="fg.neutral" maxLines={1}>
+            {selected?.title ?? "Story preview"}
           </Text>
           {selected?.description ? (
             <Text as="p" textStyle="t2Regular" color="fg.neutralMuted" maxLines={1}>
@@ -99,96 +161,95 @@ export function PreviewCanvas({
             </Text>
           ) : null}
         </Box>
+        <ActionButton
+          variant="neutralSolid"
+          size="xsmall"
+          aria-label="Save as PDF"
+          title="Download a Typst PDF"
+          loading={pdfBusy}
+          disabled={pages.length === 0 || pdfBusy}
+          onClick={handleDownloadPdf}
+        >
+          <PrefixIcon svg={<DownloadOutline18 />} />
+          {compact ? "PDF" : "Export PDF"}
+        </ActionButton>
+      </HStack>
+
+      <HStack
+        data-print-hide
+        className="typstbook-preview-toolbar"
+        align="center"
+        gap="x2"
+        px="x3"
+        py="x1"
+        bg="bg.layerDefault"
+        borderBottomWidth={1}
+        borderColor="stroke.neutralSubtle"
+      >
         <ToolbarGroup>
-          <ActionButton
-            variant="ghost"
-            size="xsmall"
-            layout="iconOnly"
-            aria-label="Zoom out"
-            onClick={() => onZoom(zoom - 0.25)}
-          >
-            <Icon svg={<IconMinusLine />} />
+          <ActionButton variant="ghost" size="xsmall" layout="iconOnly"
+            aria-label="Zoom out" title="Zoom out" onClick={() => manualZoom(zoom - 0.25)}>
+            <Icon svg={<MinusOutline18 />} />
           </ActionButton>
-          <Text
-            textStyle="t2Medium"
-            color="fg.neutralMuted"
-            style={{ minWidth: 44, textAlign: "center", fontVariantNumeric: "tabular-nums" }}
-          >
+          <ActionButton variant="ghost" size="xsmall" aria-label="Reset zoom to 100%"
+            title="Reset zoom to 100%" onClick={() => manualZoom(1)}
+            className="typstbook-zoom-value">
             {Math.round(zoom * 100)}%
-          </Text>
-          <ActionButton
-            variant="ghost"
-            size="xsmall"
-            layout="iconOnly"
-            aria-label="Zoom in"
-            onClick={() => onZoom(zoom + 0.25)}
-          >
-            <Icon svg={<IconPlusLine />} />
+          </ActionButton>
+          <ActionButton variant="ghost" size="xsmall" layout="iconOnly"
+            aria-label="Zoom in" title="Zoom in" onClick={() => manualZoom(zoom + 0.25)}>
+            <Icon svg={<PlusOutline18 />} />
+          </ActionButton>
+          <ActionButton variant={zoomMode === "width" ? "neutralWeak" : "ghost"} size="xsmall"
+            disabled={!natural.width} aria-label="Fit width" aria-pressed={zoomMode === "width"}
+            title="Keep preview fitted to the available width" onClick={() => setZoomMode("width")}>
+            {compact ? "Width" : "Fit width"}
+          </ActionButton>
+          <ActionButton variant={zoomMode === "page" ? "neutralWeak" : "ghost"} size="xsmall"
+            disabled={!natural.pageWidth} aria-label="Fit page" aria-pressed={zoomMode === "page"}
+            title="Keep the first page fully visible" onClick={() => setZoomMode("page")}>
+            {compact ? "Page" : "Fit page"}
           </ActionButton>
         </ToolbarGroup>
+        <Box flexGrow />
         <ToolbarGroup>
-          {CONTROL_PLACEMENTS.map((placement) => {
-            const selected = controlsPlacement === placement;
-            return (
-              <ActionButton
-                key={placement}
-                variant={selected ? "neutralWeak" : "ghost"}
-                size="xsmall"
-                layout="iconOnly"
-                aria-label={placementLabel(placement)}
-                aria-pressed={selected}
-                onClick={() => onControlsPlacement(placement)}
-              >
+          <ActionButton variant={showCode ? "neutralWeak" : "ghost"} size="xsmall"
+            aria-label="Show code" title="Show Typst source" aria-pressed={showCode}
+            disabled={!selected?.source} onClick={() => setShowCode((prev) => !prev)}>
+            <PrefixIcon svg={<CodeOutline18 />} />
+            Code
+          </ActionButton>
+          <ActionButton variant="ghost" size="xsmall" layout="iconOnly"
+            aria-label="Print preview" title="Print preview" disabled={pages.length === 0}
+            onClick={() => printPreview(selected?.title, pages)}>
+            <Icon svg={<PrintOutline18 />} />
+          </ActionButton>
+        </ToolbarGroup>
+        {!compact && (
+          <ToolbarGroup>
+            {CONTROL_PLACEMENTS.map((placement) => (
+              <ActionButton key={placement}
+                variant={controlsPlacement === placement ? "neutralWeak" : "ghost"}
+                size="xsmall" layout="iconOnly" aria-label={placementLabel(placement)}
+                title={placementLabel(placement)} aria-pressed={controlsPlacement === placement}
+                onClick={() => onControlsPlacement(placement)}>
                 <PlacementIcon placement={placement} />
               </ActionButton>
-            );
-          })}
-        </ToolbarGroup>
-        {pages.length > 0 ? (
-          <ToolbarGroup>
-            <Text
-              textStyle="t2Medium"
-              color="fg.neutralMuted"
-              style={{ minWidth: 44, textAlign: "center", fontVariantNumeric: "tabular-nums" }}
-            >
-              {pages.length}p
-            </Text>
+            ))}
           </ToolbarGroup>
-        ) : null}
-        <ToolbarGroup>
-          <ActionButton
-            variant={showCode ? "neutralWeak" : "ghost"}
-            size="xsmall"
-            layout="iconOnly"
-            aria-label="Show code"
-            aria-pressed={showCode}
-            disabled={!selected?.source}
-            onClick={() => setShowCode((prev) => !prev)}
-          >
-            <Icon svg={<IconArrowLeftBracketRightLine />} />
-          </ActionButton>
-          <ActionButton
-            variant="ghost"
-            size="xsmall"
-            layout="iconOnly"
-            aria-label="Print preview"
-            disabled={pages.length === 0}
-            onClick={() => printPreview(selected?.title, pages)}
-          >
-            <Icon svg={<IconArrowUpBracketDownLine />} />
-          </ActionButton>
-        </ToolbarGroup>
+        )}
       </HStack>
 
       <Box
         ref={viewportRef}
         data-print-root
+        className="typstbook-preview-surface"
         flexGrow
         minWidth="0"
         minHeight="0"
-        px="x6"
-        pt="x7"
-        pb="x10"
+        px="x4"
+        pt="x4"
+        pb="x6"
         style={{ overflow: "auto", overscrollBehavior: "contain", touchAction: "pan-x pan-y" }}
       >
         {diagnostics.length > 0 ? (
@@ -199,10 +260,18 @@ export function PreviewCanvas({
             />
           </Box>
         ) : null}
+        {pdfError ? (
+          <Box data-print-hide width="full" maxWidth="640px" mx="auto" mb="x4">
+            <ErrorCallout title="PDF export failed" description={pdfError} />
+          </Box>
+        ) : null}
         {code !== null ? <CodePanel code={code} /> : null}
         {pages.length > 0 ? (
           <Box
             style={{
+              // Grow the scrollable canvas with the scaled pages. Centering
+              // inside a narrower flex row creates unreachable negative overflow.
+              width: "max-content",
               minWidth: "100%",
               display: "flex",
               justifyContent: "center",
@@ -211,8 +280,10 @@ export function PreviewCanvas({
           >
             <Box
               ref={worldRef}
+              className="typstbook-preview-world"
               data-print-world
               style={{
+                flexShrink: 0,
                 width: natural.width ? natural.width * zoom : undefined,
                 height: natural.height ? natural.height * zoom : undefined,
               }}
@@ -233,7 +304,8 @@ export function PreviewCanvas({
                       data-print-page
                       data-seed-color-mode="light-only"
                       bg="bg.layerDefault"
-                      borderRadius="r2"
+                      borderRadius="r1"
+                      className="typstbook-paper"
                       overflowX="hidden"
                       overflowY="hidden"
                       borderWidth={1}
@@ -261,6 +333,16 @@ export function PreviewCanvas({
           </Box>
         ) : null}
       </Box>
+      <HStack data-print-hide className="typstbook-preview-status" justify="space-between"
+        align="center" px="x3" py="x1" bg="bg.layerDefault" borderTopWidth={1}
+        borderColor="stroke.neutralSubtle">
+        <Text textStyle="t1Regular" color="fg.neutralSubtle">
+          {previewError ? "Preview has errors" : `${pages.length} ${pages.length === 1 ? "page" : "pages"}`}
+        </Text>
+        <Text textStyle="t1Regular" color="fg.neutralSubtle">
+          {compact ? "SVG preview" : "Ctrl / ⌘ + scroll to zoom"}
+        </Text>
+      </HStack>
     </VStack>
   );
 }
@@ -279,12 +361,11 @@ function placementLabel(placement: ControlsPlacement): string {
 }
 
 function PlacementIcon({ placement }: { placement: ControlsPlacement }) {
-  const icon = <Icon svg={<IconSquareSplitedVerticalLeftLine />} />;
   switch (placement) {
     case "right":
-      return <Box style={{ display: "flex", transform: "scaleX(-1)" }}>{icon}</Box>;
+      return <Icon svg={<LayoutRightOutline18 />} />;
     case "bottom":
-      return <Box style={{ display: "flex", transform: "rotate(-90deg)" }}>{icon}</Box>;
+      return <Icon svg={<LayoutBottomOutline18 />} />;
     default: {
       const _exhaustive: never = placement;
       return _exhaustive;
@@ -326,16 +407,7 @@ function firstPageSizePt(pages: string[]): { width: number; height: number } | n
 
 function ToolbarGroup({ children }: { children: ReactNode }) {
   return (
-    <HStack
-      align="center"
-      gap="x1"
-      px="x1"
-      py="x1"
-      borderWidth={1}
-      borderColor="stroke.neutralMuted"
-      borderRadius="r2"
-      bg="bg.layerFill"
-    >
+    <HStack className="typstbook-toolbar-group" align="center" gap="x0_5">
       {children}
     </HStack>
   );

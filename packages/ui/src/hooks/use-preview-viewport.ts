@@ -1,3 +1,4 @@
+import { MIN_ZOOM, MAX_ZOOM } from "@/lib/preview-fit";
 import { useEffect, useLayoutEffect, useRef } from "react";
 
 type ZoomAnchor = {
@@ -37,9 +38,12 @@ export function usePreviewViewport(zoom: number, onZoom: (zoom: number) => void)
       const viewportX = event.clientX - rect.left;
       const viewportY = event.clientY - rect.top;
       const current = zoomRef.current;
-      const worldX = (viewport.scrollLeft + viewportX - world.offsetLeft) / current;
-      const worldY = (viewport.scrollTop + viewportY - world.offsetTop) / current;
-      const next = current * Math.exp(-event.deltaY * 0.01);
+      // Both rectangles use viewport coordinates; offsetLeft/Top may instead
+      // be relative to an ancestor outside this scroller.
+      const worldRect = world.getBoundingClientRect();
+      const worldX = (event.clientX - worldRect.left) / current;
+      const worldY = (event.clientY - worldRect.top) / current;
+      const next = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, current * Math.exp(-event.deltaY * 0.01)));
       if (next === current) {
         return;
       }
@@ -59,8 +63,10 @@ export function usePreviewViewport(zoom: number, onZoom: (zoom: number) => void)
       return;
     }
     anchorRef.current = null;
-    viewport.scrollLeft = anchor.worldX * zoom + world.offsetLeft - anchor.viewportX;
-    viewport.scrollTop = anchor.worldY * zoom + world.offsetTop - anchor.viewportY;
+    const viewportRect = viewport.getBoundingClientRect();
+    const worldRect = world.getBoundingClientRect();
+    viewport.scrollLeft += worldRect.left + anchor.worldX * zoom - viewportRect.left - anchor.viewportX;
+    viewport.scrollTop += worldRect.top + anchor.worldY * zoom - viewportRect.top - anchor.viewportY;
   }, [zoom]);
 
   return { viewportRef, worldRef, innerRef };

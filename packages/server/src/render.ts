@@ -1,4 +1,4 @@
-import { mkdir, readdir, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import type { CompileRequest, CompileResult } from "./types.ts";
@@ -73,4 +73,51 @@ export async function compileStory(
     pages,
     diagnostics: diagnosticsFromStderr(result.stderr),
   };
+}
+
+export type PdfResult = {
+  pdf: Buffer | null;
+  diagnostics: string[];
+};
+
+export async function compileStoryToPdf(
+  options: RenderOptions,
+  request: CompileRequest,
+): Promise<PdfResult> {
+  // A fresh mkdtemp per call (rather than a `outputDirFor`-style path keyed
+  // by file+title) -- two PDF exports for the same story can run
+  // concurrently (two tabs, or a request overlapping a static-build pass),
+  // and a shared directory would let one's cleanup race the other's write.
+  const outDir = await mkdtemp(join(tmpdir(), "typstbook-render-pdf-"));
+  try {
+    const output = join(outDir, "story.pdf");
+    const includePreview = await hasPreviewFile(options.packageRoot);
+
+    const result = await runTypst(
+      options.typst,
+      [
+        "compile",
+        "--root",
+        options.packageRoot,
+        "--package-path",
+        options.packagePath,
+        "--input",
+        `args=${JSON.stringify(request.args)}`,
+        "--input",
+        `title=${request.title}`,
+        "-",
+        output,
+      ],
+      renderWrapperSource(toPosix(request.file), includePreview),
+    );
+
+    if (result.code !== 0) {
+      return { pdf: null, diagnostics: diagnosticsFromStderr(result.stderr) };
+    }
+
+    const pdf = await readFile(output);
+    return { pdf, diagnostics: diagnosticsFromStderr(result.stderr) };
+  } finally {
+    await rm(outDir, { recursive: true, force: true });
+  }
 }

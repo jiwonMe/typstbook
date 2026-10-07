@@ -14,7 +14,7 @@ import {
   PrefixIcon,
 } from "@seed-design/react";
 import type { FieldLabelVariantProps } from "@seed-design/css/recipes/field-label";
-import { IconExclamationmarkCircleFill } from "@karrotmarket/react-monochrome-icon";
+import { AlertWarningOutline18 } from "@/components/icons/AlertWarningOutline18";
 
 export interface TextFieldProps
   extends Omit<SeedTextField.RootProps, "prefix" | "onValueChange" | "asChild"> {
@@ -137,7 +137,7 @@ export const TextField = React.forwardRef<HTMLDivElement, TextFieldProps>(
               ))}
             {renderErrorMessage && (
               <SeedField.ErrorMessage>
-                <PrefixIcon svg={<IconExclamationmarkCircleFill />} />
+                <PrefixIcon svg={<AlertWarningOutline18 />} />
                 {errorMessage}
               </SeedField.ErrorMessage>
             )}

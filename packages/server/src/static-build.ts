@@ -1,7 +1,7 @@
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { extractAllStories } from "./extractor.ts";
-import { compileStory } from "./render.ts";
+import { compileStory, compileStoryToPdf } from "./render.ts";
 import type { StaticSiteData, StaticStory } from "./types.ts";
 
 export type StaticBuildOptions = {
@@ -24,16 +24,21 @@ export async function buildStaticSite(
   const extracted = await extractAllStories(options);
   const stories: StaticStory[] = [];
   for (const story of extracted.stories) {
-    const compiled = await compileStory(options, {
+    const request = {
       file: story.file,
       title: story.title,
       args: story.args,
       page: story.page,
-    });
+    };
+    const [compiled, pdfResult] = await Promise.all([
+      compileStory(options, request),
+      compileStoryToPdf(options, request),
+    ]);
     stories.push({
       ...story,
       pages: compiled.pages,
       diagnostics: compiled.diagnostics,
+      pdf: pdfResult.pdf ? pdfResult.pdf.toString("base64") : null,
     });
   }
   const data: StaticSiteData = { stories, errors: extracted.errors };

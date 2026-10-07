@@ -1,9 +1,7 @@
-import {
-  IconLaptopLine,
-  IconMoonLine,
-  IconSunLine,
-} from "@karrotmarket/react-monochrome-icon";
-import { HStack, Icon } from "@seed-design/react";
+import { LaptopOutline18 } from "@/components/icons/LaptopOutline18";
+import { MoonOutline18 } from "@/components/icons/MoonOutline18";
+import { SunOutline18 } from "@/components/icons/SunOutline18";
+import { HStack, Icon, Text } from "@seed-design/react";
 import { useSideNavigationContext } from "@seed-design/react/primitive";
 import { useColorMode } from "@/hooks/use-color-mode";
 import { cycleColorMode, type ColorMode } from "@/lib/theme";
@@ -30,11 +28,11 @@ function colorModeLabel(mode: ColorMode): string {
 function colorModeIcon(mode: ColorMode) {
   switch (mode) {
     case "light-only":
-      return <IconSunLine />;
+      return <SunOutline18 />;
     case "dark-only":
-      return <IconMoonLine />;
+      return <MoonOutline18 />;
     case "system":
-      return <IconLaptopLine />;
+      return <LaptopOutline18 />;
     default: {
       const _exhaustive: never = mode;
       return _exhaustive;
@@ -57,16 +55,11 @@ export function ThemeSetting() {
   }
 
   return (
-    <HStack justify="center">
+    <HStack justify="space-between" align="center">
+      <Text textStyle="t2Regular" color="fg.neutralMuted">Appearance</Text>
       <HStack
         align="center"
         gap="x1"
-        px="x1"
-        py="x1"
-        borderWidth={1}
-        borderColor="stroke.neutralMuted"
-        borderRadius="r2"
-        bg="bg.layerFill"
       >
         {COLOR_MODES.map((mode) => {
           const selected = colorMode === mode;
@@ -77,6 +70,7 @@ export function ThemeSetting() {
               size="xsmall"
               layout="iconOnly"
               aria-label={colorModeLabel(mode)}
+              title={colorModeLabel(mode)}
               aria-pressed={selected}
               onClick={() => setColorMode(mode)}
             >

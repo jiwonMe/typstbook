@@ -4,9 +4,9 @@
  * @requires @seed-design/css@^2.0.0
  **/
 
-import IconCheckmarkFatFill from "@karrotmarket/react-monochrome-icon/IconCheckmarkFatFill";
-import IconMinusFatFill from "@karrotmarket/react-monochrome-icon/IconMinusFatFill";
-import IconExclamationmarkCircleFill from "@karrotmarket/react-monochrome-icon/IconExclamationmarkCircleFill";
+import { CheckOutline18 } from "@/components/icons/CheckOutline18";
+import { MinusOutline18 } from "@/components/icons/MinusOutline18";
+import { AlertWarningOutline18 } from "@/components/icons/AlertWarningOutline18";
 import {
   Checkbox as SeedCheckbox,
   Fieldset as SeedFieldset,
@@ -89,7 +89,7 @@ export const CheckboxGroup = React.forwardRef<HTMLDivElement, CheckboxGroupProps
               ))}
             {errorMessage && (
               <SeedFieldset.ErrorMessage>
-                <PrefixIcon svg={<IconExclamationmarkCircleFill />} />
+                <PrefixIcon svg={<AlertWarningOutline18 />} />
                 {errorMessage}
               </SeedFieldset.ErrorMessage>
             )}
@@ -118,9 +118,9 @@ export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
       <SeedCheckbox.Root ref={rootRef} {...otherProps}>
         <SeedCheckbox.Control>
           <SeedCheckbox.Indicator
-            unchecked={otherProps.variant === "ghost" ? <IconCheckmarkFatFill /> : null}
-            checked={<IconCheckmarkFatFill />}
-            indeterminate={<IconMinusFatFill />}
+            unchecked={otherProps.variant === "ghost" ? <CheckOutline18 /> : null}
+            checked={<CheckOutline18 />}
+            indeterminate={<MinusOutline18 />}
           />
         </SeedCheckbox.Control>
         <SeedCheckbox.Label>{label}</SeedCheckbox.Label>
@@ -137,9 +137,9 @@ export const Checkmark = React.forwardRef<HTMLDivElement, CheckmarkProps>((props
   return (
     <SeedCheckbox.Control ref={ref} {...props}>
       <SeedCheckbox.Indicator
-        unchecked={props.variant === "ghost" ? <IconCheckmarkFatFill /> : null}
-        checked={<IconCheckmarkFatFill />}
-        indeterminate={<IconMinusFatFill />}
+        unchecked={props.variant === "ghost" ? <CheckOutline18 /> : null}
+        checked={<CheckOutline18 />}
+        indeterminate={<MinusOutline18 />}
       />
     </SeedCheckbox.Control>
   );

@@ -1,24 +1,40 @@
 import { watch } from "chokidar";
-import { createServer } from "node:http";
+import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { extname, join, relative, resolve } from "node:path";
 import { WebSocketServer, type WebSocket } from "ws";
 import { extractAllStories, extractStoryFile } from "./extractor.ts";
 import { invalidateFor } from "./invalidate.ts";
-import { compileStory } from "./render.ts";
+import { compileStory, compileStoryToPdf } from "./render.ts";
 import type {
   ClientMessage,
+  CompileRequest,
   FileError,
   ServerMessage,
   StoryIR,
 } from "./types.ts";
-import { isStoryFile, mergeStoryArgs, toPosix } from "./ir.ts";
+import { isStoryFile, mergeStoryArgs, titleSlug, toPosix } from "./ir.ts";
 import { isBuiltUi, resolveUiRoot } from "./paths.ts";
 import { isPreviewPath } from "./preview.ts";
 import { serveStatic } from "./static.ts";
 import { ensureHelperPackagePath, requireTypstBinary } from "./typst.ts";
 
 const WORKBENCH_WS_PATH = "/__typstbook_ws";
+const WORKBENCH_PDF_PATH = "/__typstbook_pdf";
 const COMPILE_DEBOUNCE_MS = 80;
+
+function readRequestBody(req: IncomingMessage): Promise<string> {
+  return new Promise((resolveBody, reject) => {
+    const chunks: Buffer[] = [];
+    req.on("data", (chunk: Buffer) => chunks.push(chunk));
+    req.on("end", () => resolveBody(Buffer.concat(chunks).toString("utf8")));
+    req.on("error", reject);
+  });
+}
+
+function sendJson(res: ServerResponse, status: number, body: unknown): void {
+  res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
+  res.end(JSON.stringify(body));
+}
 
 /** Per-tab state. Each browser tab gets its own selection/args/compile queue. */
 type ClientSession = {
@@ -73,10 +89,9 @@ export class Workbench {
     const httpServer = createServer();
     this.httpServer = httpServer;
     const uiRoot = resolveUiRoot();
+    let serveApp: (req: IncomingMessage, res: ServerResponse) => void;
     if (isBuiltUi(uiRoot)) {
-      httpServer.on("request", (req, res) => {
-        serveStatic(uiRoot, req, res);
-      });
+      serveApp = (req, res) => serveStatic(uiRoot, req, res);
     } else {
       const { createServer: createViteServer } = await import("vite");
       const vite = await createViteServer({
@@ -93,10 +108,16 @@ export class Workbench {
         },
         appType: "spa",
       });
-      httpServer.on("request", (req, res) => {
-        vite.middlewares(req, res);
-      });
+      serveApp = (req, res) => vite.middlewares(req, res);
     }
+    httpServer.on("request", (req, res) => {
+      const pathname = new URL(req.url ?? "/", "http://127.0.0.1").pathname;
+      if (req.method === "POST" && pathname === WORKBENCH_PDF_PATH) {
+        void this.handlePdfRequest(req, res);
+        return;
+      }
+      serveApp(req, res);
+    });
 
     const wss = new WebSocketServer({ noServer: true });
     this.wss = wss;
@@ -138,6 +159,39 @@ export class Workbench {
     const boundPort =
       address && typeof address === "object" ? address.port : this.port;
     return `http://127.0.0.1:${boundPort}`;
+  }
+
+  private async handlePdfRequest(
+    req: IncomingMessage,
+    res: ServerResponse,
+  ): Promise<void> {
+    let request: CompileRequest;
+    try {
+      request = JSON.parse(await readRequestBody(req)) as CompileRequest;
+    } catch {
+      sendJson(res, 400, { diagnostics: ["typstbook: malformed PDF export request."] });
+      return;
+    }
+    try {
+      const compiled = await compileStoryToPdf(
+        { typst: this.typst, packageRoot: this.packageRoot, packagePath: this.packagePath },
+        request,
+      );
+      if (!compiled.pdf) {
+        sendJson(res, 422, { diagnostics: compiled.diagnostics });
+        return;
+      }
+      res.writeHead(200, {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="${titleSlug(request.title)}.pdf"`,
+        "Content-Length": compiled.pdf.length,
+      });
+      res.end(compiled.pdf);
+    } catch (error) {
+      sendJson(res, 500, {
+        diagnostics: [error instanceof Error ? error.message : String(error)],
+      });
+    }
   }
 
   async stop(): Promise<void> {

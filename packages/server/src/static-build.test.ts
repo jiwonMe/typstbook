@@ -52,6 +52,7 @@ describe("writeStaticSite", () => {
           source: null,
           pages: ["<svg>ok</svg>"],
           diagnostics: [],
+          pdf: null,
         },
       ],
       errors: [],
@@ -148,6 +149,9 @@ describe("buildStaticSite", () => {
       assert.equal(data.errors.length, 0);
       assert.equal(data.stories.length, 5);
       assert.ok(data.stories.every((s) => s.pages.length > 0));
+      assert.ok(
+        data.stories.every((s) => s.pdf && Buffer.from(s.pdf, "base64").subarray(0, 5).toString() === "%PDF-"),
+      );
 
       const html = await readFile(join(outDir, "index.html"), "utf8");
       assert.match(html, /window\.__TYPSTBOOK_STATIC__=/);

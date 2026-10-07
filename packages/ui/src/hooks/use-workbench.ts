@@ -1,4 +1,6 @@
+import { MIN_ZOOM, MAX_ZOOM } from "@/lib/preview-fit";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { base64ToBlob, safeFilename, triggerDownload } from "@/lib/download";
 import {
   mergeStoryArgs,
   type ClientMessage,
@@ -6,6 +8,8 @@ import {
   type ServerMessage,
   type StoryIR,
 } from "@/lib/types";
+
+export type PdfDownloadResult = { ok: true } | { ok: false; diagnostics: string[] };
 
 export type WorkbenchState = {
   stories: StoryIR[];
@@ -21,7 +25,11 @@ export type WorkbenchState = {
   connected: boolean;
 };
 
-type StaticStory = StoryIR & { pages: string[]; diagnostics: string[] };
+type StaticStory = StoryIR & {
+  pages: string[];
+  diagnostics: string[];
+  pdf: string | null;
+};
 type StaticSiteData = { stories: StaticStory[]; errors: FileError[] };
 
 declare global {
@@ -151,6 +159,9 @@ export function useWorkbench() {
         pageIndex: 0,
       }));
       send({ type: "select", storyId: id });
+      // A session remembers the last args for each story. Keep the compiler in
+      // sync with the defaults (or preserved values) shown by the controls.
+      send({ type: "set-args", storyId: id, args });
     },
     [send],
   );
@@ -173,10 +184,60 @@ export function useWorkbench() {
     [send],
   );
 
+  const downloadPdf = useCallback(async (): Promise<PdfDownloadResult> => {
+    const current = stateRef.current;
+    if (!current.selectedId) {
+      return { ok: false, diagnostics: ["No story selected."] };
+    }
+    if (STATIC_DATA) {
+      const story = STATIC_STORIES_BY_ID.get(current.selectedId);
+      if (!story?.pdf) {
+        return { ok: false, diagnostics: ["No PDF available for this story."] };
+      }
+      triggerDownload(
+        base64ToBlob(story.pdf, "application/pdf"),
+        `${safeFilename(story.title)}.pdf`,
+      );
+      return { ok: true };
+    }
+    const story = current.stories.find((item) => item.id === current.selectedId);
+    if (!story) {
+      return { ok: false, diagnostics: ["No story selected."] };
+    }
+    try {
+      const response = await fetch("/__typstbook_pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          file: story.file,
+          title: story.title,
+          args: current.args,
+          page: story.page,
+        }),
+      });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as {
+          diagnostics?: string[];
+        } | null;
+        return {
+          ok: false,
+          diagnostics: body?.diagnostics ?? [`PDF export failed (${response.status}).`],
+        };
+      }
+      triggerDownload(await response.blob(), `${safeFilename(story.title)}.pdf`);
+      return { ok: true };
+    } catch (error) {
+      return {
+        ok: false,
+        diagnostics: [error instanceof Error ? error.message : String(error)],
+      };
+    }
+  }, []);
+
   const setZoom = useCallback((zoom: number) => {
     setState((prev) => ({
       ...prev,
-      zoom: Math.min(3, Math.max(0.25, zoom)),
+      zoom: Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom)),
     }));
   }, []);
 
@@ -363,6 +424,7 @@ export function useWorkbench() {
     setArg,
     setZoom,
     setPageIndex,
+    downloadPdf,
     readOnly: Boolean(STATIC_DATA),
   };
 }

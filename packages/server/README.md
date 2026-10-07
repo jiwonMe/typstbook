@@ -1,7 +1,9 @@
 # typstbook
 
+<img src="packages/ui/public/typstbook-logo.svg" alt="typstbook" width="72">
+
 [![npm](https://img.shields.io/npm/v/typstbook)](https://www.npmjs.com/package/typstbook)
-[![license](https://img.shields.io/npm/l/typstbook)](https://github.com/jiwonMe/typstbook/blob/main/LICENSE)
+[![license](https://img.shields.io/npm/l/typstbook)](LICENSE)
 
 A Storybook-like local workbench for [Typst](https://typst.app) package authors. Write `*.stories.typ` files, run `typstbook dev`, and isolate-compile functions, templates, set/show rules, pages, and math while you edit args.
 
@@ -77,7 +79,7 @@ If you omit `arg-types`, typstbook infers a control from the default:
 
 | Default | Control |
 | --- | --- |
-| `bool` | checkbox |
+| `bool` | On / Off toggle |
 | `number` | number |
 | `#fff` / `#ffffff` / `#ffffffff` | color |
 | anything else | text |
@@ -108,8 +110,10 @@ Optional package-root `preview.typ` wraps every extract and render with `#show: 
 
 - Sidebar lists stories by file. File-level Typst errors stay visible.
 - The canvas stacks every compiled page. Zoom, then print with the toolbar button or `⌘P` / `Ctrl+P` (chrome is hidden).
+- The download toolbar button saves the story as a real, multi-page PDF compiled by `typst` -- not a browser print-to-PDF -- using the current control values. In `build` output it downloads the PDF baked in at build time (default args only, since controls are read-only there).
 - The `</>` toolbar button shows the story's `render:` source with the current control values substituted in, with a copy button. It updates live as you edit controls, with no recompile. Disabled when the source could not be isolated from the story file (see below).
-- Controls dock to the right or the bottom.
+- Controls dock to the right or the bottom. On desktop, drag the sidebar or Controls boundary to resize it; each size is remembered separately. Focus a boundary and use arrow keys (Shift for larger steps), or double-click it to restore its default size.
+- **Fit width** and **Fit page** stay active as panels, the window, or story dimensions change. Fit page fits the first page. Manual zoom exits auto-fit; the selected fit mode is remembered across reloads. On narrow screens the buttons are labeled **Width** and **Page**.
 - Color mode is light, dark, or system. Typst SVG pages stay on white paper either way.
 - Saving a story file, `preview.typ`, or imported sources re-extracts and recompiles.
 - Each browser tab has its own selected story and control values -- open the same `dev` server in two tabs (or share a URL) and they don't interfere. The URL (`?path=...&args=...`) captures the exact state, so copying it reproduces what you're looking at for someone else on the same server.
@@ -136,7 +140,7 @@ typstbook test my-pkg --update   # (re)write __snapshots__/ from the current out
 
 Commit `__snapshots__/` alongside your stories.
 
-`build` compiles every story with its default args and writes a static, self-contained copy of the workbench to `--out` (default `./typstbook-static`, replaced on every run — don't point it at your package root). Controls become read-only (they show the default args; there is no server to recompile against), everything else — sidebar, zoom, print, "Show code" — works the same as `dev`.
+`build` compiles every story with its default args and writes a static, self-contained copy of the workbench to `--out` (default `./typstbook-static`, replaced on every run — don't point it at your package root). Controls become read-only (they show the default args; there is no server to recompile against), everything else — sidebar, zoom, print, PDF download, "Show code" — works the same as `dev`.
 
 ```bash
 typstbook build my-pkg --out docs/preview
@@ -144,12 +148,33 @@ typstbook build my-pkg --out docs/preview
 
 Host `--out` on any static file host (GitHub Pages, Netlify, S3, a plain `python -m http.server`) — including from a sub-path. It will **not** work opened directly via `file://`: the bundle is loaded as an ES module, and Chromium-based browsers block ES modules under the `file://` origin. This is a browser limitation shared by every Vite/ESM-based static build, not something `typstbook build` can special-case around.
 
+## Develop from this repo
+
+Requires [pnpm](https://pnpm.io) 11+ (`corepack enable` on Node.js 22+).
+
+```bash
+corepack enable
+pnpm install
+pnpm dev examples/demo-pkg
+pnpm dev examples/kice-korean
+```
+
+`demo-pkg` has callout, resume, and math stories. `kice-korean` is a KICE-style Korean reading exam (passages, questions, `<보기>`, commentary pages).
+
+```bash
+pnpm test             # unit tests (packages/server)
+pnpm test:snapshots   # typstbook test against examples/demo-pkg and examples/kice-korean
+pnpm typecheck
+pnpm build
+pnpm pack:check
+```
+
+The published npm package is `typstbook` (`packages/server`). It embeds the built UI and the Typst helper. `@typstbook/ui` is not published separately. Do not publish this CLI as `typst` — that name is the official compiler.
+
 ## Status
 
-v1 is `typstbook init`, `typstbook dev`, `typstbook test` (snapshot regression checks for CI), and `typstbook build` (static docs site, root/sub-path hosting only -- no `file://`). WASM render, JS CSF stories, visual regression, PDF download, and Typst Universe publishing are later.
-
-Source and examples: [github.com/jiwonMe/typstbook](https://github.com/jiwonMe/typstbook).
+v1 is `typstbook init`, `typstbook dev`, `typstbook test` (snapshot regression checks for CI), and `typstbook build` (static docs site, root/sub-path hosting only -- no `file://`), plus PDF download from the workbench. WASM render, JS CSF stories, visual regression, and Typst Universe publishing are later.
 
 ## License
 
-[MIT](https://github.com/jiwonMe/typstbook/blob/main/LICENSE)
+[MIT](LICENSE)

@@ -3,6 +3,9 @@ export type ControlType = "text" | "number" | "boolean" | "select" | "color";
 export type ArgType = {
   control: ControlType;
   options?: unknown[];
+  min?: number;
+  max?: number;
+  step?: number;
 };
 
 export type StoryIR = {

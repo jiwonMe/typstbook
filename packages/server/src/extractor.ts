@@ -58,6 +58,9 @@ function asArgTypes(value: unknown): Record<string, ArgType> {
       result[key] = {
         control,
         options: Array.isArray(entry.options) ? entry.options : undefined,
+        min: typeof entry.min === "number" ? entry.min : undefined,
+        max: typeof entry.max === "number" ? entry.max : undefined,
+        step: typeof entry.step === "number" ? entry.step : undefined,
       };
     }
   }

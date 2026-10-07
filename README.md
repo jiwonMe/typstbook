@@ -79,7 +79,7 @@ If you omit `arg-types`, typstbook infers a control from the default:
 
 | Default | Control |
 | --- | --- |
-| `bool` | checkbox |
+| `bool` | On / Off toggle |
 | `number` | number |
 | `#fff` / `#ffffff` / `#ffffffff` | color |
 | anything else | text |
@@ -110,8 +110,10 @@ Optional package-root `preview.typ` wraps every extract and render with `#show: 
 
 - Sidebar lists stories by file. File-level Typst errors stay visible.
 - The canvas stacks every compiled page. Zoom, then print with the toolbar button or `⌘P` / `Ctrl+P` (chrome is hidden).
+- The download toolbar button saves the story as a real, multi-page PDF compiled by `typst` -- not a browser print-to-PDF -- using the current control values. In `build` output it downloads the PDF baked in at build time (default args only, since controls are read-only there).
 - The `</>` toolbar button shows the story's `render:` source with the current control values substituted in, with a copy button. It updates live as you edit controls, with no recompile. Disabled when the source could not be isolated from the story file (see below).
-- Controls dock to the right or the bottom.
+- Controls dock to the right or the bottom. On desktop, drag the sidebar or Controls boundary to resize it; each size is remembered separately. Focus a boundary and use arrow keys (Shift for larger steps), or double-click it to restore its default size.
+- **Fit width** and **Fit page** stay active as panels, the window, or story dimensions change. Fit page fits the first page. Manual zoom exits auto-fit; the selected fit mode is remembered across reloads. On narrow screens the buttons are labeled **Width** and **Page**.
 - Color mode is light, dark, or system. Typst SVG pages stay on white paper either way.
 - Saving a story file, `preview.typ`, or imported sources re-extracts and recompiles.
 - Each browser tab has its own selected story and control values -- open the same `dev` server in two tabs (or share a URL) and they don't interfere. The URL (`?path=...&args=...`) captures the exact state, so copying it reproduces what you're looking at for someone else on the same server.
@@ -138,7 +140,7 @@ typstbook test my-pkg --update   # (re)write __snapshots__/ from the current out
 
 Commit `__snapshots__/` alongside your stories.
 
-`build` compiles every story with its default args and writes a static, self-contained copy of the workbench to `--out` (default `./typstbook-static`, replaced on every run — don't point it at your package root). Controls become read-only (they show the default args; there is no server to recompile against), everything else — sidebar, zoom, print, "Show code" — works the same as `dev`.
+`build` compiles every story with its default args and writes a static, self-contained copy of the workbench to `--out` (default `./typstbook-static`, replaced on every run — don't point it at your package root). Controls become read-only (they show the default args; there is no server to recompile against), everything else — sidebar, zoom, print, PDF download, "Show code" — works the same as `dev`.
 
 ```bash
 typstbook build my-pkg --out docs/preview
@@ -171,7 +173,7 @@ The published npm package is `typstbook` (`packages/server`). It embeds the buil
 
 ## Status
 
-v1 is `typstbook init`, `typstbook dev`, `typstbook test` (snapshot regression checks for CI), and `typstbook build` (static docs site, root/sub-path hosting only -- no `file://`). WASM render, JS CSF stories, visual regression, PDF download, and Typst Universe publishing are later.
+v1 is `typstbook init`, `typstbook dev`, `typstbook test` (snapshot regression checks for CI), and `typstbook build` (static docs site, root/sub-path hosting only -- no `file://`), plus PDF download from the workbench. WASM render, JS CSF stories, visual regression, and Typst Universe publishing are later.
 
 ## License
 

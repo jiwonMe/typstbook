@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { compileStory, renderWrapperSource } from "./render.ts";
+import { compileStory, compileStoryToPdf, renderWrapperSource } from "./render.ts";
 import {
   ensureHelperPackagePath,
   findTypstBinary,
@@ -145,5 +145,53 @@ describe("compileStory", () => {
     // resume() sets paper: "a5"
     assert.ok(width > 419 && width < 420, `expected A5 width, got ${width}`);
     assert.ok(height > 595 && height < 596, `expected A5 height, got ${height}`);
+  });
+});
+
+describe("compileStoryToPdf", () => {
+  it("compiles a demo story to a PDF buffer", async (t) => {
+    const typst = findTypstBinary();
+    if (!typst) {
+      t.skip("typst is not on PATH");
+      return;
+    }
+    const compiled = await compileStoryToPdf(
+      {
+        typst,
+        packageRoot: demoRoot,
+        packagePath: await ensureHelperPackagePath(),
+      },
+      {
+        file: "stories/callout.stories.typ",
+        title: "Warning",
+        args: { title: "주의", variant: "warning" },
+        page: { paper: "a6", margin: "12pt" },
+      },
+    );
+    assert.ok(compiled.pdf, compiled.diagnostics.join("\n"));
+    assert.equal(compiled.pdf?.subarray(0, 5).toString(), "%PDF-");
+  });
+
+  it("reports diagnostics instead of a buffer on a compile error", async (t) => {
+    const typst = findTypstBinary();
+    if (!typst) {
+      t.skip("typst is not on PATH");
+      return;
+    }
+    const compiled = await compileStoryToPdf(
+      {
+        typst,
+        packageRoot: demoRoot,
+        packagePath: await ensureHelperPackagePath(),
+      },
+      {
+        file: "stories/callout.stories.typ",
+        title: "does-not-exist",
+        args: {},
+        page: null,
+      },
+    );
+    assert.equal(compiled.pdf, null);
+    assert.ok(compiled.diagnostics.join("\n").length > 0);
   });
 });

@@ -11,11 +11,9 @@ import {
   VisuallyHidden,
 } from "@seed-design/react";
 import type { FieldLabelVariantProps } from "@seed-design/css/recipes/field-label";
-import {
-  IconCheckmarkFatFill,
-  IconChevronDownSmallLine,
-  IconExclamationmarkCircleFill,
-} from "@karrotmarket/react-monochrome-icon";
+import { CheckOutline18 } from "@/components/icons/CheckOutline18";
+import { ChevronDownOutline18 } from "@/components/icons/ChevronDownOutline18";
+import { AlertWarningOutline18 } from "@/components/icons/AlertWarningOutline18";
 import * as React from "react";
 
 export interface SelectRootProps extends SeedSelect.RootProps {
@@ -97,7 +95,7 @@ export const SelectRoot = ({
             ))}
           {renderErrorMessage && (
             <SeedField.ErrorMessage>
-              <PrefixIcon svg={<IconExclamationmarkCircleFill />} />
+              <PrefixIcon svg={<AlertWarningOutline18 />} />
               {errorMessage}
             </SeedField.ErrorMessage>
           )}
@@ -113,7 +111,7 @@ export interface SelectTriggerProps extends Omit<SeedSelect.TriggerProps, "child
   prefixIcon?: React.ReactNode;
 
   /**
-   * @default <IconChevronDownSmallLine />
+   * @default <ChevronDownOutline18 />
    */
   suffixIcon?: React.ReactNode;
 }
@@ -122,7 +120,7 @@ export interface SelectTriggerProps extends Omit<SeedSelect.TriggerProps, "child
  * @see https://seed-design.io/react/components/select
  */
 export const SelectTrigger = React.forwardRef<HTMLButtonElement, SelectTriggerProps>(
-  ({ placeholder, prefixIcon, suffixIcon = <IconChevronDownSmallLine />, ...props }, ref) => {
+  ({ placeholder, prefixIcon, suffixIcon = <ChevronDownOutline18 />, ...props }, ref) => {
     return (
       <SeedSelect.Trigger ref={ref} {...props}>
         <SeedSelect.PrefixIcon fallback={prefixIcon} />
@@ -190,7 +188,7 @@ export const SelectItem = React.forwardRef<HTMLDivElement, SelectItemProps>(
           <SeedSelect.ItemLabel />
           {description && <SeedSelect.ItemDescription>{description}</SeedSelect.ItemDescription>}
         </SeedSelect.ItemBody>
-        <SeedSelect.ItemIndicator selected={<IconCheckmarkFatFill />} />
+        <SeedSelect.ItemIndicator selected={<CheckOutline18 />} />
       </SeedSelect.Item>
     );
   },

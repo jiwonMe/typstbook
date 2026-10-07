@@ -3,6 +3,9 @@ export type ControlType = "text" | "number" | "boolean" | "select" | "color";
 export type ArgType = {
   control: ControlType;
   options?: unknown[];
+  min?: number;
+  max?: number;
+  step?: number;
 };
 
 export type StoryIR = {
@@ -78,6 +81,8 @@ export type CheckReport = {
 export type StaticStory = StoryIR & {
   pages: string[];
   diagnostics: string[];
+  /** Base64-encoded PDF compiled with the story's default args, or null if that compile failed. */
+  pdf: string | null;
 };
 
 export type StaticSiteData = {

@@ -9,16 +9,19 @@
     "build": "vite build"
   },
   "dependencies": {
-    "@karrotmarket/react-monochrome-icon": "^1.25.0",
     "@seed-design/css": "^2.5.0",
     "@seed-design/react": "^2.3.0",
     "@seed-design/tailwind4-theme": "^2.3.0",
+    "culori": "^4.0.2",
+    "dialkit": "^2.0.0",
+    "motion": "^13.2.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
     "@seed-design/vite-plugin": "^2.1.0",
     "@tailwindcss/vite": "^4.1.11",
+    "@types/culori": "^4.0.1",
     "@types/node": "^24.13.3",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",

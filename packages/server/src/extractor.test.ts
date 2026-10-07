@@ -41,6 +41,26 @@ describe("storiesFromEvalJson", () => {
     assert.equal(stories[0]?.argTypes.title?.control, "text");
   });
 
+  it("carries min/max/step through for number controls", () => {
+    const { stories } = storiesFromEvalJson(
+      "stories/test.stories.typ",
+      JSON.stringify([
+        {
+          title: "Test",
+          args: { t: 23 },
+          "arg-types": {
+            t: { control: "number", min: 0, max: 100, step: 5 },
+          },
+          "has-render": true,
+        },
+      ]),
+    );
+    assert.equal(stories[0]?.argTypes.t?.control, "number");
+    assert.equal(stories[0]?.argTypes.t?.min, 0);
+    assert.equal(stories[0]?.argTypes.t?.max, 100);
+    assert.equal(stories[0]?.argTypes.t?.step, 5);
+  });
+
   it("defaults description to null when omitted", () => {
     const { stories } = storiesFromEvalJson(
       "stories/callout.stories.typ",
