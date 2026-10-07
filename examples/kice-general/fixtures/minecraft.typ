@@ -2,6 +2,7 @@
 // official server jar and mappings; audit details live in MINECRAFT-SOURCES.md.
 // Answer/explanation fields are never rendered on the examination paper.
 #import "../src/lib.typ": question, choices, material, view, data-table, final-notice, display, statements
+#import "../src/typography.typ": print-mode
 #import "minecraft-images.typ": minecraft-image
 
 #let minecraft-notice = [Java Edition 1.21.1 기준 · 비공식 창작 모의평가 문제지]
@@ -193,7 +194,10 @@
     prompt: [모든 품목을 처리하는 데 필요한 최소 가동 게임 틱 수는?],
     material: [
       일반 화로·용광로·훈연기를 각 1대씩 동시에 가동하여 철 원석 80 개, 켈프 64 개, 모래 8 개를 처리한다. 연료는 석탄 19 개뿐이다.
-      #data-table((0.8fr, 1fr, 0.7fr, 0.8fr), header: ([장치], [처리 가능 품목], [1 개 처리], [석탄 1 개]), rows: (
+      #data-table((0.8fr, 1fr, 0.7fr, 0.8fr), header: ([장치],
+        [#context if print-mode.get() { [처리 가능#linebreak()품목] } else { [처리 가능 품목] }],
+        [#context if print-mode.get() { [1 개#linebreak()처리] } else { [1 개 처리] }],
+        [석탄 1 개]), rows: (
         ([화로], [세 품목 모두], [200틱], [1600틱]), ([용광로], [철 원석], [100틱], [800틱]), ([훈연기], [켈프], [100틱], [800틱]),
       ))
       점화한 연료는 장치 사이에서 나누거나 이전할 수 없다. 시작 시 진행률과 잔여 연소 시간은 0이다. 전용 호퍼가 원료·결과를 충분히 빠르게 운반하여 처리 중 공급·수거 대기는 없다. 필요한 품목 배분은 가동 전에 정한다.
@@ -392,12 +396,19 @@
 #assert(minecraft-questions.len() == 20 and minecraft-total-points == 50)
 #for item in minecraft-questions { assert(item.choices.len() == 5 and item.answer >= 1 and item.answer <= 5) }
 
-#let minecraft-question(number, points: auto) = {
+// The examination data above is shared by every paper size. A4 changes only
+// the option grid, whose shorter rows keep fractions and coordinates intact.
+#let minecraft-print-choice-columns = (3, 3, 3, 5, 5, 3, 3, 3, 3, 3, 3, 3, 2, 3, 3, 5, 3, 3, 3, 5)
+
+#let minecraft-question(number, points: auto, print: false, columns: auto) = {
   let item = minecraft-questions.at(number - 1)
+  let choice-columns = if columns != auto { columns }
+    else if print { minecraft-print-choice-columns.at(number - 1) }
+    else { item.columns }
   question(number, item.prompt, points: if points == auto { minecraft-points.at(number - 1) } else { points }, body: [
     #material(item.material)
     #if "view" in item { view(item.view) }
-    #choices(..item.choices, columns: item.columns)
+    #choices(..item.choices, columns: choice-columns)
   ])
 }
 
@@ -412,9 +423,18 @@
   if number == 4 { final-notice() }
 }
 
-#let minecraft-paper() = {
-  for number in range(1, 5) {
-    if number > 1 { colbreak() }
-    minecraft-page(number)
+#let minecraft-paper(flow: "paged", gap: 1.6em) = {
+  assert(("paged", "continuous").contains(flow), message: "kice-general: 문제 흐름은 paged 또는 continuous여야 합니다")
+  if flow == "continuous" {
+    for number in range(1, minecraft-questions.len() + 1) {
+      if number > 1 { v(gap) }
+      minecraft-question(number, print: true)
+    }
+    final-notice()
+  } else {
+    for number in range(1, 5) {
+      if number > 1 { colbreak() }
+      minecraft-page(number)
+    }
   }
 }

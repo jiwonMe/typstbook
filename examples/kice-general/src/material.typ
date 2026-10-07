@@ -1,12 +1,12 @@
 #import "fonts.typ": fonts, font, sizes
 #import "inline.typ": as-content, as-blocks
-#import "typography.typ": typography-profiles, typography-state
+#import "typography.typ": typography-profiles, print-typography-profiles, typography-state, typography-config, print-mode
 
 #let material-stroke = 0.36pt
 // General source material: serif body text inside a complete rectangle.
 #let material(body, title: none, font-config: fonts) = context {
   let name = typography-state.get()
-  let style = typography-profiles.at(name)
+  let style = typography-config()
   let unit(value) = value * (text.size / style.body-size)
   v(0.47348em)
   // Keep the outer offset in body ems; source text uses the central material role.
@@ -36,7 +36,7 @@
 // measured in its actual font, so changing the central font config is safe.
 #let view(body, title: auto, font-config: fonts) = context {
   let name = typography-state.get()
-  let style = typography-profiles.at(name)
+  let style = typography-config()
   let unit(value) = value * (text.size / style.body-size)
   let inset-top = unit(style.view-top)
   set text(font: font("body", config: font-config))
@@ -58,7 +58,7 @@
       let heading = box(scale(x: 95%, y: 100%, reflow: true, box(
         fill: white,
         inset: (x: 0.35em),
-        text(font: font("body", config: font-config), size: unit(sizes.body), heading-text),
+        text(font: font("body", config: font-config), size: unit(if print-mode.get() { sizes.print-body } else { sizes.body }), heading-text),
       )))
       place(top + center, dy: -inset-top - measure(heading).height / 2, heading)
     }
@@ -70,7 +70,7 @@
 // columns is a count or a track tuple; rows is a tuple of row tuples.
 #let data-table(columns, header: (), rows: (), align: center, font-config: fonts,
   size: auto, header-size: auto) = context {
-  let style = typography-profiles.at(typography-state.get())
+  let style = typography-config()
   let unit(value) = value * (text.size / style.body-size)
   let cell-size = if size == auto { style.table-size } else { size }
   let heading-size = if header-size == auto { style.table-heading-size } else { header-size }
@@ -102,7 +102,7 @@
 
 // Full-column Korean reading passage, distinct from an inset question box.
 #let passage(body, font-config: fonts) = context {
-  let style = typography-profiles.korean
+  let style = if print-mode.get() { print-typography-profiles.korean } else { typography-profiles.korean }
   let unit(value) = value * (text.size / style.body-size)
   set text(font: font("body", config: font-config))
   set par(first-line-indent: (amount: style.first-indent / style.body-size / 0.95 * 1em, all: true),
@@ -114,7 +114,7 @@
 
 // Each statement has its own hanging paragraph, including tall inline math.
 #let statements(..items) = context {
-  let style = typography-profiles.at(typography-state.get())
+  let style = typography-config()
   let indent = (if typography-state.get() == "math" { 19.32pt } else { 17.34pt }) / style.body-size * 1em
   let labels = ("ㄱ.", "ㄴ.", "ㄷ.", "ㄹ.", "ㅁ.")
   assert(items.pos().len() <= labels.len())
@@ -127,7 +127,7 @@
 
 #let response-section(label: "5지선다형", font-config: fonts) = context {
   assert(("5지선다형", "단답형").contains(label))
-  let style = typography-profiles.at(typography-state.get())
+  let style = typography-config()
   let unit(value) = value * (text.size / style.body-size)
   v(unit(1.12pt))
   block(width: unit(if label == "5지선다형" { 110.16pt } else { 78.90pt }),

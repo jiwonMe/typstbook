@@ -2,6 +2,7 @@
 // context; every matrix and system is defined here without game-version rules.
 // Bare inline mat/cases deliberately exercise the shared automatic display rule.
 #import "../src/lib.typ": question, choices, material, view, data-table, display
+#import "../src/typography.typ": print-mode
 
 #let structures-gap = 1em
 
@@ -15,6 +16,32 @@
 }
 
 #let structures-matrices(rows: 2) = {
+  context {
+  if print-mode.get() {
+    question(21, [좌표 자료의 #rows#sym.times#rows 행렬 $A$와 벡터의 성분·간격을 살펴보자.], body: [
+      #material(title: [좌표 자료])[
+        모든 성분은 실수이다. $a_3=1$, $R$의 $a_(2,1)=-1$이고, $a_(3,3)$이 나타나면 그 값은 1이다.
+        #if rows == 2 {
+          $ A = mat(1, -display(frac(1, 2)); sqrt(2), 3) $
+        } else {
+          $ A = mat(1, -display(frac(1, 2)), sqrt(2); 0, 3, display(frac(2, 3)); -1, 0, a_(3,3)) $
+        }
+        열벡터 $v$는 두 표기로 같은 값을 기록하며, $w$는 행벡터이다.
+        $ v &= mat(display(frac(1, 2)); -sqrt(2); a_3)
+            = vec(display(frac(1, 2)), -sqrt(2), a_3) \
+          w &= mat(display(frac(1, 2)), -sqrt(2), a_3) $
+        별도의 $2 times 3$ 좌표 자료는
+        $ R = mat(1, -display(frac(1, 2)), sqrt(2); a_(2,1), 0, display(frac(2, 3))) $
+        이다. 음수·분수·근호·첨자와 괄호의 위아래 간격을 확인한다.
+      ]
+      #view[
+        두 좌표의 변환 행렬과 확인식은 다음과 같다.
+        $ B = mat(1, display(frac(1, 2)); -1, 2) $
+        $ "ㄱ." & quad display(B mat(2; 4) = mat(4; 6)) \
+          "ㄴ." & quad display(det(B) = frac(5, 2)) $
+      ]
+    ])
+  } else {
   question(21, [마인크래프트 좌표 자료의 #rows#sym.times#rows 행렬 $A$가 #matrix-data(rows: rows)일 때, 각 성분의 크기와 간격을 살펴보자.], body: [
     #material(title: [좌표 자료])[
       모든 성분은 실수이다. $a_(3,3)$이 나타나는 경우에는 그 성분의 값을 $1$로 정한다. 음수·분수·근호·첨자를 같은 행렬 안에 넣는다.
@@ -35,6 +62,8 @@
       ㄴ. $display(det(B) = frac(5, 2))$이다.
     ]
   ])
+  }
+  }
   v(structures-gap)
   question(22, [세 좌표의 연립방정식을 증강행렬로 기록한 자료를 살펴보자.], points: 3, body: [
     #material[
@@ -159,14 +188,15 @@
 // question() must advance naturally, with no colbreak/pagebreak inside it.
 #let structures-boundaries() = context {
   let scale = text.size / 11.5pt
-  block(height: 690pt * scale, above: 0pt, below: 0pt)[
+  let compact = print-mode.get()
+  block(height: if compact { 420pt } else { 690pt * scale }, above: 0pt, below: 0pt)[
     #question(29, [다음 문항의 자연스러운 단 이동을 확인하기 위해 여백을 예약한다.], body: [
       #material[30번의 행렬·연립식·벡터 선지는 함께 오른쪽 단으로 이동해야 한다.]
     ])
   ]
   structured-boundary-question(30)
   v(structures-gap)
-  block(height: 500pt * scale, above: 0pt, below: 0pt)[
+  block(height: if compact { 330pt } else { 500pt * scale }, above: 0pt, below: 0pt)[
     #question(31, [다음 문항의 자연스러운 쪽 이동을 확인하기 위해 여백을 예약한다.], body: [
       #material[32번의 행렬·연립식·벡터 선지는 함께 다음 쪽으로 이동해야 한다.]
     ])

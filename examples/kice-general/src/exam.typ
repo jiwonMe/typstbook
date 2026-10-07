@@ -1,6 +1,7 @@
 #import "fonts.typ": fonts, font, body-style
 #import "theme.typ": geometry, sizes, paper-presets
-#import "typography.typ": typography-profiles, typography-state
+#import "typography.typ": typography-profiles, typography-state, print-mode
+#import "a4-exam.typ": a4-exam
 
 #let page-box(current, total, scale: 1, font-config: fonts) = box(
   width: 50.52pt * scale, height: 21.96pt * scale, stroke: 0.36pt * scale,
@@ -137,11 +138,17 @@
   font-config: fonts, typography: "science", body,
 ) = {
   assert(typography-profiles.keys().contains(typography), message: "kice-general: typography는 science, math, korean입니다")
+  assert(("elective", "standard").contains(layout), message: "kice-general: layout은 elective 또는 standard입니다")
+  let first-page = if first-page == auto { page-offset == 0 } else { first-page }
+  if paper == "a4" {
+    a4-exam(year: year, session: session, area: area, subject: subject,
+      period: period, form: form, selected: selected, first-page: first-page, layout: layout,
+      total-pages: total-pages, page-offset: page-offset, booklet-offset: booklet-offset,
+      booklet-pages: booklet-pages, notice: notice, font-config: font-config, typography: typography, body)
+  } else {
   let type-config = typography-profiles.at(typography)
   let paper-config = paper-presets.at(paper)
-  assert(("elective", "standard").contains(layout), message: "kice-general: layout은 elective 또는 standard입니다")
   let s = paper-config.scale
-  let first-page = if first-page == auto { page-offset == 0 } else { first-page }
   let margin-x = geometry.left * s
   let inner-width = paper-config.width - (geometry.left + geometry.right) * s
   let body-top = (geometry.running-rule + geometry.column-top + type-config.body-offset) * s
@@ -182,6 +189,7 @@
     },
   )
   typography-state.update(typography)
+  print-mode.update(false)
   body-style(size: type-config.body-size * s, font-config: font-config,
     tracking: type-config.tracking, leading: type-config.body-leading, {
     if first-page {
@@ -189,4 +197,5 @@
     }
     columns(2, gutter: geometry.gutter * s, body)
   })
+  }
 }

@@ -3,6 +3,7 @@
 #import "fixtures/math-stress.typ": math-stress-paper
 
 #exam(
+  paper: sys.inputs.at("paper", default: "suneung"),
   area: "게임탐구",
   subject: "마인크래프트",
   tab-label: "수식",

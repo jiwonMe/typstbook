@@ -1,6 +1,7 @@
 // Layout fixtures, not curriculum-constrained assessment items. Minecraft is
 // only the fictional subject. Identities and all variables are stated locally.
 #import "../src/lib.typ": question, choices, material, view, data-table, display
+#import "../src/typography.typ": print-mode
 
 #let separated(..items) = {
   for (index, item) in items.pos().enumerate() {
@@ -159,15 +160,16 @@
 // Reserved blocks intentionally leave too little room for the next complete
 // question. No manual break is used: question() must carry its box and choices
 // intact to the next column, then to the next page.
-#let math-boundaries() = {
-  block(height: 675pt, above: 0pt, below: 0pt)[
+#let math-boundaries() = context {
+  let compact = print-mode.get()
+  block(height: if compact { 420pt } else { 675pt }, above: 0pt, below: 0pt)[
     #question(11, [다음 문항을 단 끝에 가깝게 보내기 위해 여백을 예약하였다.], body: [
       #material[이 아래의 예약 여백은 경계 검사용이다. 이어지는 12번의 보기와 선지가 한 문항으로 다음 단에 이동해야 한다.]
     ])
   ]
   boundary-question(12)
   v(2em)
-  block(height: 670pt, above: 0pt, below: 0pt)[
+  block(height: if compact { 400pt } else { 670pt }, above: 0pt, below: 0pt)[
     #question(13, [다음 문항을 쪽 끝에 가깝게 보내기 위해 여백을 예약하였다.], body: [
       #material[이어지는 14번의 보기와 선지가 한 문항으로 다음 쪽에 이동해야 한다.]
     ])

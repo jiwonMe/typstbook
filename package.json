@@ -10,6 +10,7 @@
     "dev:kice-general": "node examples/kice-general/workbench.mjs dev",
     "test:kice-general": "node examples/kice-general/workbench.mjs test",
     "pdf:kice-general": "node examples/kice-general/workbench.mjs pdf",
+    "pdf:kice-general:a4": "node examples/kice-general/workbench.mjs pdf:a4",
     "dev": "tsx packages/server/src/cli.ts dev",
     "build": "pnpm --filter @typstbook/ui build && pnpm --filter typstbook build",
     "test": "pnpm --filter typstbook test",

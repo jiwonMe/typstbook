@@ -58,7 +58,7 @@
 #let font(role, config: fonts) = config.at(role)
 
 // Reference sizes at the original PDF scale. Components express local sizes
-// relative to `body`, so the A4 preset scales the complete hierarchy together.
+// relative to `body`. Native A4 uses its own physical print sizes below.
 #let sizes = (
   body: 11.5pt, math-body: 11.48pt, material: 11.5pt, question-number: 13pt,
   table: 10pt, korean-table: 11pt, korean-table-heading: 10.5pt,
@@ -69,6 +69,11 @@
   field: 16pt, footer: 12pt, notice: 10pt, final-notice: 11pt, tab: 14pt,
   answer-title: 18pt, answer-section: 11pt, answer-number: 13pt,
   answer-label: 10.5pt, answer-meta: 9.5pt, answer-key: 10.5pt, answer-running: 9pt,
+  print-body: 11pt, print-table: 9.5pt, print-question-number: 12.5pt,
+  print-exam-name: 14pt, print-area: 24pt, print-subject: 18pt,
+  print-period: 12pt, print-corner-page: 20pt, print-field: 11pt,
+  print-running-area: 17pt, print-running-subject: 13pt,
+  print-footer: 9pt, print-notice: 8.5pt,
 )
 
 // `text(stretch:)` selects a font variant; SM's static font does not provide one.

@@ -44,3 +44,23 @@
   ),
 )
 #let typography-state = state("kice-general.typography", "science")
+#let print-mode = state("kice-general.print", false)
+#let print-type = (
+  body-size: sizes.print-body, material-size: sizes.print-body,
+  body-leading: 0.55em, material-leading: 0.5em, view-leading: 0.5em,
+  table-size: sizes.print-table, table-heading-size: sizes.print-table,
+  compact-choice-marker: 12pt, compact-choice-gutter: 3pt,
+)
+#let print-typography-profiles = (
+  science: typography-profiles.science + print-type,
+  math: typography-profiles.math + print-type,
+  korean: typography-profiles.korean + print-type,
+)
+
+// Called from context-aware components so one manuscript can use either the
+// measured reference profile or its readable A4 print counterpart.
+#let typography-config() = {
+  let name = typography-state.get()
+  if print-mode.get() { print-typography-profiles.at(name) }
+  else { typography-profiles.at(name) }
+}

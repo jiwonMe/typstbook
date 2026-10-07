@@ -15,11 +15,22 @@
 
 #story(
   title: "전체 모의고사",
-  description: "Java Edition 1.21.1의 실제 로직을 심화한20문항·50점·4쪽 시험지. 흑백 PNG와 행렬·조건부 확률·자원 최적화를 포함한다.",
+  description: "Java Edition 1.21.1의20문항·50점. 원본4쪽, 본문11pt의A4재조판, 원본비율A4축소본을 비교한다.",
   args: (paper: "suneung", year: 2027, session: "6월 모의평가", area: "게임탐구", subject: "마인크래프트", period: 4, selected: true),
-  arg-types: (paper: (control: "select", options: ("suneung", "a4")), period: (control: "number", min: 1, max: 5, step: 1)),
-  render: (args) => exam(paper: args.paper, year: args.year, session: args.session, area: args.area, subject: args.subject, period: args.period, selected: args.selected, total-pages: 4)[
-    #minecraft-paper()
+  arg-types: (paper: (control: "select", options: ("suneung", "a4", "a4-scaled")), period: (control: "number", min: 1, max: 5, step: 1)),
+  render: (args) => exam(paper: args.paper, year: args.year, session: args.session, area: args.area, subject: args.subject, period: args.period, selected: args.selected, total-pages: if args.paper == "a4" { auto } else { 4 })[
+    #minecraft-paper(flow: if args.paper == "a4" { "continuous" } else { "paged" })
+  ],
+)
+
+#story(
+  title: "A4 인쇄용 시험지",
+  description: "실제크기100%로 인쇄하는A4전용조판. 본문11pt·표9.5pt,20문항을 자동으로 배치한다.",
+  args: (year: 2027, session: "6월 모의평가", area: "게임탐구", subject: "마인크래프트", period: 4, selected: true),
+  arg-types: (period: (control: "number", min: 1, max: 5, step: 1)),
+  render: (args) => exam(paper: "a4", year: args.year, session: args.session,
+    area: args.area, subject: args.subject, period: args.period, selected: args.selected)[
+    #minecraft-paper(flow: "continuous")
   ],
 )
 
