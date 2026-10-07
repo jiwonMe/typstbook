@@ -52,5 +52,23 @@
     "source_name": "latinmodern-math.otf",
     "bytes": 733736,
     "sha256": "6075562b771f8b82f0c179e363389684f2dd09de30038269e2628e504bd7be0f"
+  },
+  {
+    "file": "toss-product-sans.ttc",
+    "source_name": "TossProductSans-AllWeights.ttc",
+    "bytes": 21114876,
+    "sha256": "00faaa35873a3659ecb04fd8a8c0a43c599038d734d7e069d5b484fe0af4e571"
+  },
+  {
+    "file": "bookk-myungjo-light.ttf",
+    "source_name": "BookkMyungjo_Light.ttf",
+    "bytes": 7750424,
+    "sha256": "d9e7641bd4f395f372c8922b1b1e342278dd99c7b0bea24e5d02201c5f7a4788"
+  },
+  {
+    "file": "bookk-myungjo-bold.ttf",
+    "source_name": "BookkMyungjo_Bold.ttf",
+    "bytes": 8011304,
+    "sha256": "229799749987e4f581219b6a0f5b6fc6e3b04ebf27642bb9f77a2aff0a2f21cd"
   }
 ]

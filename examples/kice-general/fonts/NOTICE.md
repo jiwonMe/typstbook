@@ -1,7 +1,8 @@
 # 포함된 폰트
 
-`src/fonts.typ`의 기본 KICE profile에 필요한 원본 폰트9개를 포함한다.
-기존 작업공간의 `trinity-press/templates/kice-suneung/fonts/`에서 파일 내용의
+`src/fonts.typ`의 기본 KICE profile에 필요한 원본 폰트9개와
+답지 profile의 Toss Product Sans·Bookk Myungjo 파일3개를 포함한다.
+시험지용9개는 기존 작업공간의 `trinity-press/templates/kice-suneung/fonts/`에서 파일 내용의
 변경 없이 복사했으며, 파일명만 ASCII로 통일했다. 원래 파일명·크기·SHA256은
 [manifest.json](manifest.json)에 기록했다. launcher가 이 디렉터리를
 `TYPST_FONT_PATHS`에 등록하므로 별도의 폰트 설치가 필요하지 않다.
@@ -17,11 +18,21 @@
 | `sin-graphic.ttf` | 신그래픽체 | 영역·과목명 |
 | `hy-graphic-m.ttf` | HYGraPhic M | 하단 안내문 |
 | `latinmodern-math.otf` | Latin Modern Math | 수식 |
+| `toss-product-sans.ttc` | Toss Product Sans | 답지 제목·문항 번호·라벨·배점; 300–900 굵기 |
+| `bookk-myungjo-light.ttf` | Bookk Myungjo | 답지 명조 본문·정답; 300 굵기 |
+| `bookk-myungjo-bold.ttf` | Bookk Myungjo | 답지 명조 강조; 700 굵기 |
 
 Libertinus Serif 등 기본 fallback은 Typst 컴파일러에 포함된 서체를 사용한다.
-선택 가능한 portable profile의 Bookk Myungjo·Pretendard는 별도로 설치한다.
+선택 가능한 portable profile의 Pretendard는 별도로 설치한다.
 
 ## 출처와 권리
+
+답지용 파일3개는 사용자가 보유한 `Library/Fonts/`의 원본을 변경 없이 복사했다.
+Toss Product Sans 버전1.6.1의 내부 권리자는 Viva Republica이며,
+디자인 표기는 Sandoll Inc. & Leedotype Co., Ltd.이다.
+Bookk Myungjo 버전1.2의 내부 권리자는 Bookk Co, Ltd.이며,
+제작 표기는 Sandoll Tium Inc., license URL은 `https://Bookk.io/`이다.
+이 파일들의 권리는 원본 권리자에게 있으며, 템플릿의 MIT 라이선스를 적용하지 않는다.
 
 SM 파일은 기존 작업공간에서 보유한 직지소프트 SM클래식 OTF이다.
 기존 출처 기록은 [직지소프트 SM클래식 목록](https://www.jikjisoft.com/font?0a4374ed-f0ee-47ae-9dcd-a8f182251073=true)을 가리킨다.

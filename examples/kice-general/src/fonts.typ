@@ -18,6 +18,21 @@
     notice: ("HYGraPhic M", "Libertinus Serif"),
     math: ("Latin Modern Math", "SM JMyungJo Std"),
   ),
+  answers: (
+    body: ("Bookk Myungjo", "Libertinus Serif"),
+    prompt: ("Bookk Myungjo", "Libertinus Serif"),
+    heading: ("Toss Product Sans", "Libertinus Serif"),
+    material: ("Bookk Myungjo", "Libertinus Serif"),
+    table: ("Toss Product Sans", "Libertinus Serif"),
+    table-heading: ("Toss Product Sans", "Libertinus Serif"),
+    directive: ("Toss Product Sans", "Libertinus Serif"),
+    label: ("Bookk Myungjo", "Libertinus Serif"),
+    number: ("Toss Product Sans", "Libertinus Serif"),
+    title: ("Toss Product Sans", "Libertinus Serif"),
+    badge: ("Toss Product Sans", "Libertinus Serif"),
+    notice: ("Toss Product Sans", "Libertinus Serif"),
+    math: ("Latin Modern Math", "Bookk Myungjo"),
+  ),
   // Set `fonts` to this profile for machines without the SM/HY families.
   // Korean families must be installed; only the Latin/math fallback is built in.
   portable: (
@@ -38,6 +53,8 @@
 )
 
 #let fonts = font-profiles.kice
+#let answer-fonts = font-profiles.answers
+#let answer-weights = (body: 300, title: 700, number: 600, label: 500, meta: 400)
 #let font(role, config: fonts) = config.at(role)
 
 // Reference sizes at the original PDF scale. Components express local sizes
@@ -50,6 +67,8 @@
   period: 22pt, corner-page: 33pt,
   running-area: 27pt, running-subject: 23pt,
   field: 16pt, footer: 12pt, notice: 10pt, final-notice: 11pt, tab: 14pt,
+  answer-title: 18pt, answer-section: 11pt, answer-number: 13pt,
+  answer-label: 10.5pt, answer-meta: 9.5pt, answer-key: 10.5pt, answer-running: 9pt,
 )
 
 // `text(stretch:)` selects a font variant; SM's static font does not provide one.

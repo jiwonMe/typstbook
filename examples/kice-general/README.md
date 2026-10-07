@@ -21,7 +21,7 @@ node examples/kice-general/workbench.mjs test --update
 
 ## 폰트는 한 곳에서 관리
 
-모든 글꼴 패밀리와 역할별 기준 크기는 **`src/fonts.typ`**에만 있다. `font-profiles.kice`의 역할별 가족과 `sizes`를 수정하면 시험지와 모든 컴포넌트·story에 함께 반영된다. 본문·발문·자료·표·영역명·시험명·문항 번호·선지 번호·수식·안내문을 각각 지정할 수 있다. 자료 설명과 `<보기>` 내부 본문은 serif이다. 표의 글꼴·크기는 원본처럼 별도 역할을 사용한다. 사용하는 원본 폰트9개는 패키지의 `fonts/`에 포함했다. 파일별 출처는 [fonts/NOTICE.md](fonts/NOTICE.md), SHA256은 [fonts/manifest.json](fonts/manifest.json)에 기록했다.
+모든 글꼴 패밀리와 역할별 기준 크기는 **`src/fonts.typ`**에만 있다. `font-profiles.kice`의 역할별 가족과 `sizes`를 수정하면 시험지와 모든 컴포넌트·story에 함께 반영된다. 본문·발문·자료·표·영역명·시험명·문항 번호·선지 번호·수식·안내문을 각각 지정할 수 있다. 자료 설명과 `<보기>` 내부 본문은 serif이다. 표의 글꼴·크기는 원본처럼 별도 역할을 사용한다. 시험지용 원본 폰트9개와 답지용 폰트3개는 패키지의 `fonts/`에 포함했다. 파일별 출처는 [fonts/NOTICE.md](fonts/NOTICE.md), SHA256은 [fonts/manifest.json](fonts/manifest.json)에 기록했다.
 
 과목별 조판 차이는 `src/typography.typ`의 `science`·`math`·`korean`에 있다. `exam(typography: "science")`가 기본이다. 과학탐구는 11.5pt 명조 설명과 10pt 고딕 표, 수학은 11.48pt 명조·넓은 조건/보기 행간·모든 배점 표시, 국어는 11.5pt 명조·약18.38pt 행간·긴 선지의 후속 줄 들여쓰기를 사용한다. 수학·국어의 문항번호는95%, 과학탐구는100% 장평이다. `layout`은 머리말 구성, `typography`는 본문 조판으로 각각 지정한다. 과목별 원본 측정값은 [REFERENCE.md](REFERENCE.md)에 있다.
 
@@ -31,7 +31,7 @@ launcher는 아래 순서로 폰트 디렉터리를 찾고 `TYPST_FONT_PATHS`를
 2. 패키지에 포함된 `fonts/` 디렉터리
 3. 현재 작업공간의 형제 저장소 `trinity-press/templates/kice-suneung/fonts`
 
-기존 `TYPST_FONT_PATHS`도 보존한다. launcher를 사용하면 다른 저장소의 폰트 경로 없이 포함된 서체로 실행할 수 있다. 폰트를 교체하려면 `fonts.typ`의 `#let fonts = font-profiles.portable`로 바꾸고 Bookk Myungjo·Pretendard를 설치한다. 두 profile은 글리프 모양과 폭이 달라 snapshot을 별도로 갱신해야 한다. 원본 서체를 포함했으므로 공용 CI의 `test:snapshots`에도 이 예제를 추가했다.
+기존 `TYPST_FONT_PATHS`도 보존한다. launcher를 사용하면 다른 저장소의 폰트 경로 없이 포함된 서체로 실행할 수 있다. 시험지의 폰트를 교체하려면 `fonts.typ`의 `#let fonts = font-profiles.portable`로 바꾸고 Pretendard를 설치한다. 두 profile은 글리프 모양과 폭이 달라 snapshot을 별도로 갱신해야 한다. 원본 서체를 포함했으므로 공용 CI의 `test:snapshots`에도 이 예제를 추가했다.
 
 ```sh
 KICE_GENERAL_FONT_DIR=/path/to/licensed-fonts node examples/kice-general/workbench.mjs dev
@@ -88,6 +88,10 @@ typst compile --root examples/kice-general --font-path /path/to/licensed-fonts \
 | `display` | Trinity Essence와 같은 `math.display` 함수; 줄 안의 분수·행렬도 본문 크기로 표시 |
 | `matrix-style(body, column-gap:, row-gap:)` | Trinity Essence와 같은 행렬 스타일; 기본 열 간격0.8em·행 간격0.3em |
 | `math-layout` | `src/math.typ`의 행렬·벡터·연립식 간격 설정 |
+| `answer-sheet(title:, subtitle:, items:, columns: 1/2, key-columns: 10)` | A4 정답표와 전체 해설; 계속 쪽 머리말과 전체 쪽수 표시 |
+| `answer-key(items, columns: 5/10)` | 문항 번호와 정답을 한 셀에서 읽는 정답표 |
+| `solution-entry(number, answer, body, points: none)` | 번호·정답·배점, 구분선, 명조 해설을 한 단에 함께 배치 |
+| `answer-layout` | 답지 여백·단 사이 간격·문단과 문항 간격·구분선의 공용 설정 |
 
 본문에 Typst content와 일반 문자열을 모두 쓸 수 있다. 문자열을 임의 코드로 `eval`하지 않으므로 수식과 밑줄은 `$...$`, `#u[...]` 등의 **content**로 작성한다. 단/쪽을 직접 나누려면 `#colbreak()`를 사용한다. `columns` 안에서 `#pagebreak()`는 Typst가 지원하지 않는다. 두 단 뒤에 다시 `#colbreak()`를 쓰면 다음 쪽으로 넘어간다.
 
@@ -113,13 +117,35 @@ $ mat(1, 1, 3; 1, -1, 1; augment: #2) $
 
 전역 폰트 변경은 `fonts.typ`의 `fonts`를 편집한다. 함수의 `font-config:`는 해당 함수의 역할 설정만 교체하는 국소 override다. 사용자 함수 안에서 호출하는 자식 컴포넌트도 같은 override를 사용하려면 각각 전달한다.
 
+답지에는 `fonts.typ`의 `answer-fonts`를 사용한다. 본문과 정답은 **Bookk Myungjo Light**, 제목·문항 번호·라벨·배점은 **Toss Product Sans**이며, 수식은 같은 크기의 Latin Modern Math이다. 서체·굵기·크기를 각각 `font-profiles.answers`, `answer-weights`, `sizes`에서 관리한다.
+
+답지의 `items`에는 `(number: 1, answer: 3, points: 2, explanation: [...])` 같은 dictionary를 넣는다. `points`는 생략할 수 있으며, 정답의 정수 1–5는 원문자 객관식 번호로 표시한다. 단답형은 `answer: [$195$]`처럼 content로 넣는다. `theme: answer-layout + (entry-gap: 1.2em,)`처럼 답지 간격을 한 곳에서 변경할 수 있다.
+
+```typ
+#import "src/lib.typ": answer-sheet, display
+
+#answer-sheet(
+  title: [정답과 해설],
+  items: (
+    (number: 1, answer: 3, points: 2, explanation: [
+      전체 경우를 같은 기준으로 세면 다음과 같다.
+      $ display(3/5 + 1/5 = 4/5) $
+      따라서 정답은 ③이다.
+    ]),
+    (number: 2, answer: [$195$], explanation: [조건을 만족하는 정수는 $195$이다.]),
+  ),
+)
+```
+
+전체 답지는 기본 2단이고 `columns: 1`로 바꿀 수 있다. 문항 사이에 여유를 두고 문항 전체를 같은 단에 유지한다. 긴 등식은 본문 크기의 별도 수식 줄로, 기대값처럼 여러 단계인 계산은 `&`와 `\\`로 정렬해 작성한다. 내용과 열 수에 따라 쪽수가 자연스럽게 늘어난다.
+
 ## Story와 예시
 
-29개 story: 시험지·문항·선지·자료 13개, 키 큰 수식 6개, 행렬·연립식 5개, 비트맵 이미지 1개, 과목별 조판 3개, 정답과 해설 1개이다. 수식 story는 키 큰 인라인 수식, 표시 수식과 정렬, 수식 자료와 보기, 키 큰 수식 선지, 단과 쪽 경계 수식, 전체 수식 검증 시험지로 구성된다. `subjects.stories.typ`은 세 과목 profile 비교·국어형 지문·수학형 응답 구분을 실제 시험 판면에 놓는다.
+31개 story: 시험지·문항·선지·자료 13개, 키 큰 수식 6개, 행렬·연립식 5개, 비트맵 이미지 1개, 과목별 조판 3개, 정답·해설 3개이다. 수식 story는 키 큰 인라인 수식, 표시 수식과 정렬, 수식 자료와 보기, 키 큰 수식 선지, 단과 쪽 경계 수식, 전체 수식 검증 시험지로 구성된다. `subjects.stories.typ`은 세 과목 profile 비교·국어형 지문·수학형 응답 구분을 실제 시험 판면에 놓는다.
 
 `fixtures/minecraft.typ`의 20문항·50점 내용을 `sample.typ`과 시험지 story가 공유한다. **Java Edition 1.21.1 바닐라**를 기준으로 실제 구현과 제작법을 확인했다. 혼합 스택의 신호 역산, 넘침 보호 분류기, 잠금과 펄스 연장, 쿨다운, 작물의 흡수 전이행렬, 연료·제작 정수 최적화, 양조 배치, 경험치, 조건부 확률, 음수 좌표와 생성 거리를 다룬다. 필요한 게임 규칙과 실험 조건은 문항 자료에 명시한다. 검산 및 공식 파일 출처는 [MINECRAFT-SOURCES.md](MINECRAFT-SOURCES.md)에 있다.
 
-숨은 정답·해설을 `fixtures/minecraft-answers.typ`에서 읽어 정답표와 20문항 전체 해설을 담은 A4 2쪽 PDF를 만든다. `answers.typ`과 `stories/answers.stories.typ`은 같은 함수를 사용하며, 해설의 분수 등식에도 `display`를 적용한다. 문제지에는 해설이 렌더되지 않는다. 문제지 각 쪽은 5문항이고, 첫 쪽은 왼쪽 2문항/오른쪽 3문항, 계속 쪽은 왼쪽 3문항/오른쪽 2문항이다. 긴 자료·행렬·이미지까지 포함하면서 원본 판면의 단폭·폰트 크기를 유지한다.
+숨은 정답·해설을 `fixtures/minecraft-answers.typ`에서 읽어 정답표와 20문항 전체 해설을 담은 A4 PDF를 만든다. `answers.typ`과 `stories/answers.stories.typ`은 같은 `answer-sheet`를 사용하며, 해설의 분수 등식에도 `display`를 적용한다. 현재 기본 2단 답지는 4쪽, 1단은 6쪽이다. 답지 story에서는 전체 1단·2단, 정답표 5열·10열, 계산이 긴 개별 해설 6개를 비교할 수 있다. 문제지에는 해설이 렌더되지 않는다. 문제지 각 쪽은 5문항이고, 첫 쪽은 왼쪽 2문항/오른쪽 3문항, 계속 쪽은 왼쪽 3문항/오른쪽 2문항이다. 긴 자료·행렬·이미지까지 포함하면서 원본 판면의 단폭·폰트 크기를 유지한다.
 
 `assets/minecraft/`의 흑백 PNG 두 장은 내장 이미지 생성 도구로 제작했다. 7번의 자동 제련 장치와 14번의 양조기에 사용하며, [PROMPTS.md](assets/minecraft/PROMPTS.md)에 원문 프롬프트를 보존했다. 그림은 외형 삽화이고 전송·연료·양조 조건은 자료의 글과 표로 정한다. `stories/images.stories.typ`에서 두 이미지·폭 45/60/80%·자료/보기·수능/A4를 바꿀 수 있다. `fixtures/block-diagrams.typ`의 벡터 도형은 독립적인 컴포넌트 예시로 유지한다.
 
