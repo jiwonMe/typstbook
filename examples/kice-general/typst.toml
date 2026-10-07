@@ -1,0 +1,7 @@
+[package]
+name = "kice-general"
+version = "0.1.0"
+entrypoint = "src/lib.typ"
+authors = ["typstbook"]
+license = "MIT"
+description = "KICE-style general examination templates and Minecraft stories"

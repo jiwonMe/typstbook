@@ -157,9 +157,10 @@ corepack enable
 pnpm install
 pnpm dev examples/demo-pkg
 pnpm dev examples/kice-korean
+pnpm dev:kice-general
 ```
 
-`demo-pkg` has callout, resume, and math stories. `kice-korean` is a KICE-style Korean reading exam (passages, questions, `<보기>`, commentary pages).
+`demo-pkg` has callout, resume, and math stories. `kice-korean` is a KICE-style Korean reading exam (passages, questions, `<보기>`, commentary pages). [`kice-general`](examples/kice-general/README.md) follows measured KICE math, Korean and science PDF layouts with shared fonts, subject typography profiles and an advanced Minecraft Java 1.21.1 examination (20 questions, 4 pages, 29 stories). It includes generated grayscale bitmaps, a shared two-page answer and explanation sheet, tall math, matrices, systems, and page-boundary checks. Its launcher registers the bundled fonts consistently for SVG and PDF.
 
 ```bash
 pnpm test             # unit tests (packages/server)

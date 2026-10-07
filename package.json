@@ -7,10 +7,13 @@
     "pnpm": ">=11"
   },
   "scripts": {
+    "dev:kice-general": "node examples/kice-general/workbench.mjs dev",
+    "test:kice-general": "node examples/kice-general/workbench.mjs test",
+    "pdf:kice-general": "node examples/kice-general/workbench.mjs pdf",
     "dev": "tsx packages/server/src/cli.ts dev",
     "build": "pnpm --filter @typstbook/ui build && pnpm --filter typstbook build",
     "test": "pnpm --filter typstbook test",
-    "test:snapshots": "tsx packages/server/src/cli.ts test examples/demo-pkg && tsx packages/server/src/cli.ts test examples/kice-korean",
+    "test:snapshots": "tsx packages/server/src/cli.ts test examples/demo-pkg && tsx packages/server/src/cli.ts test examples/kice-korean && node examples/kice-general/workbench.mjs test",
     "typecheck": "pnpm --filter typstbook typecheck && pnpm --filter @typstbook/ui typecheck",
     "pack:check": "pnpm build && pnpm --filter typstbook pack --dry-run"
   },

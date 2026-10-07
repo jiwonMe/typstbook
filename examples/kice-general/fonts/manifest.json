@@ -1,0 +1,56 @@
+[
+  {
+    "file": "sm-jmyungjo-regular.otf",
+    "source_name": "SM중명조-Regular.otf",
+    "bytes": 4506120,
+    "sha256": "9b56248a184d323187730b149e8f0a8c9d4f6129eba6dff690b27557132eba82"
+  },
+  {
+    "file": "sm-jgothic-regular.otf",
+    "source_name": "SM중고딕-Regular.otf",
+    "bytes": 2471892,
+    "sha256": "757902cae71a3987942f18c367bac5f18b3b57339d45cfc86f0b3ad7b0eb3e5d"
+  },
+  {
+    "file": "sm-smyungjo-regular.otf",
+    "source_name": "SM신명조-Regular.otf",
+    "bytes": 3384168,
+    "sha256": "8b04eb90f0f99ef30ce02e9d99134411c79250c67e9880dde5cdc4450d693f69"
+  },
+  {
+    "file": "sm-kmyungjo-regular.otf",
+    "source_name": "SM견출명조-Regular.otf",
+    "bytes": 3596032,
+    "sha256": "491d7559bd3e100fd6922b8fa74a43a04bc4e4ca64517eb752435c45f94e4c33"
+  },
+  {
+    "file": "sm-dinaru-regular.otf",
+    "source_name": "SM디나루-Regular.otf",
+    "bytes": 903880,
+    "sha256": "8fcf48889ff7d1160ea21dfa38869037dc775135a5fd8e819f3f0a1ccc207825"
+  },
+  {
+    "file": "sm-tgothic-regular.otf",
+    "source_name": "SM태고딕-Regular.otf",
+    "bytes": 2731500,
+    "sha256": "6451efd13fd979b4dfb73bac11e9b6205b0c54be2a29509cd496785228d899a4"
+  },
+  {
+    "file": "sin-graphic.ttf",
+    "source_name": "SinGraphic.ttf",
+    "bytes": 1047520,
+    "sha256": "e1a8b7ed54994d9d193ffc9e9f2b5de2d9d103c7886c467a14cab8271c81b6be"
+  },
+  {
+    "file": "hy-graphic-m.ttf",
+    "source_name": "HYGraPhicM.ttf",
+    "bytes": 198608,
+    "sha256": "37a5369b563839eb65879bf1010f106865ecb35c81b58f57f9464747c32be93a"
+  },
+  {
+    "file": "latinmodern-math.otf",
+    "source_name": "latinmodern-math.otf",
+    "bytes": 733736,
+    "sha256": "6075562b771f8b82f0c179e363389684f2dd09de30038269e2628e504bd7be0f"
+  }
+]
