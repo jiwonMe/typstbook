@@ -42,7 +42,7 @@
 // solution together, with a thin rule and a visible gap between entries.
 #let solution-entry(number, answer, body, points: none, font-config: answer-fonts, theme: answer-layout) = {
   block(breakable: false, above: 0pt, below: theme.entry-gap)[
-    #set text(font: font("body", config: font-config), size: sizes.body,
+    #set text(font: font("body", config: font-config), size: sizes.answer-body,
       weight: answer-weights.body, tracking: theme.tracking)
     #set par(leading: theme.leading, spacing: theme.paragraph-spacing, first-line-indent: 0pt)
     #grid(columns: (1fr, auto), align: horizon,
@@ -52,7 +52,7 @@
         #text(font: font("directive", config: font-config), size: sizes.answer-label,
           weight: answer-weights.label, tracking: 0em)[정답]
         #h(0.5em)
-        #text(font: font("label", config: font-config), size: sizes.body,
+        #text(font: font("label", config: font-config), size: sizes.answer-body,
           tracking: 0em, answer-mark(answer))
       ],
       if points == none { [] } else {
@@ -97,7 +97,7 @@
       )
     },
   )
-  show: body-style.with(size: sizes.body, font-config: font-config, condense: false,
+  show: body-style.with(size: sizes.answer-body, font-config: font-config, condense: false,
     math-adjust: true, leading: theme.leading, tracking: theme.tracking)
   set par(spacing: theme.paragraph-spacing)
   set text(weight: answer-weights.body)

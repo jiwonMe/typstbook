@@ -1,6 +1,6 @@
 #import "@preview/typstbook:0.1.0": story
 #import "../fixtures/minecraft-answers.typ": minecraft-answers, minecraft-answer-items
-#import "../src/lib.typ": answer-key, solution-entry, body-style, answer-layout, answer-fonts
+#import "../src/lib.typ": answer-key, solution-entry, body-style, answer-layout, answer-fonts, sizes
 
 #story(
   title: "정답과 해설",
@@ -28,7 +28,7 @@
   arg-types: (number: (control: "select", options: (6, 9, 13, 15, 17, 18))),
   render: (args) => {
     set page(paper: "a4", margin: (x: 18mm, y: 19mm))
-    body-style(font-config: answer-fonts, condense: false, leading: answer-layout.leading,
+    body-style(size: sizes.answer-body, font-config: answer-fonts, condense: false, leading: answer-layout.leading,
       tracking: answer-layout.tracking)[
       #block(width: (210mm - 36mm - answer-layout.gutter) / 2)[
         #let item = minecraft-answer-items.at(args.number - 1)

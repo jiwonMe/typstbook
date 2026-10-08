@@ -67,7 +67,7 @@ typst compile --root examples/kice-general --font-path /path/to/licensed-fonts \
 | `typography: "science"/"math"/"korean"` | 과목별 자료·보기·표·선지 행간, 번호 장평, 배점 표시 |
 | `layout: "elective"` | 성명·수험번호·선택란이 있는 탐구형 첫 쪽 |
 | `layout: "standard", subject: none` | 응시자 정보란 없는 국어·수학·영어형 첫 쪽 |
-| `paper: "a4"` | 실제 A4에서 본문11pt·표9.5pt를 유지하는 전용 재조판 |
+| `paper: "a4"` | 실제 A4에서 본문10.5pt·표9pt를 유지하는 전용 재조판 |
 | `paper: "a4-scaled"` | 원본 판면과 글자를70.7%로 함께 줄인 A4 축소본 |
 | `selected: false` | 탐구형의 선택란만 생략 |
 | `form: [홀수형]` | 형 표시; 기본 `none` |
@@ -120,7 +120,7 @@ $ mat(1, 1, 3; 1, -1, 1; augment: #2) $
 
 전역 폰트 변경은 `fonts.typ`의 `fonts`를 편집한다. 함수의 `font-config:`는 해당 함수의 역할 설정만 교체하는 국소 override다. 사용자 함수 안에서 호출하는 자식 컴포넌트도 같은 override를 사용하려면 각각 전달한다.
 
-답지에는 `fonts.typ`의 `answer-fonts`를 사용한다. 본문과 정답은 **Bookk Myungjo Light**, 제목·문항 번호·라벨·배점은 **Toss Product Sans**이며, 수식은 같은 크기의 Latin Modern Math이다. 서체·굵기·크기를 각각 `font-profiles.answers`, `answer-weights`, `sizes`에서 관리한다.
+답지에는 `fonts.typ`의 `answer-fonts`를 사용한다. 본문과 정답은 **Bookk Myungjo Light**, 제목·문항 번호·라벨·배점은 **Toss Product Sans**이며, 수식은 같은 크기의 Latin Modern Math이다. 본문·수식은10.5pt, 문항 번호12pt, 정답 라벨·정답표10pt이다. 서체·굵기·크기를 각각 `font-profiles.answers`, `answer-weights`, `sizes`에서 관리하며, `sizes.answer-body`로 답지 본문 크기를 원본 문제지와 독립적으로 조절한다.
 
 답지의 `items`에는 `(number: 1, answer: 3, points: 2, explanation: [...])` 같은 dictionary를 넣는다. `points`는 생략할 수 있으며, 정답의 정수 1–5는 원문자 객관식 번호로 표시한다. 단답형은 `answer: [$195$]`처럼 content로 넣는다. `theme: answer-layout + (entry-gap: 1.2em,)`처럼 답지 간격을 한 곳에서 변경할 수 있다.
 
@@ -144,13 +144,13 @@ $ mat(1, 1, 3; 1, -1, 1; augment: #2) $
 
 ## A4 인쇄판
 
-`exam(paper: "a4")`는210×297mm 용지에 직접 조판한다. 본문·발문·자료·보기·선지는11pt,
-표는9.5pt이며, 수식도 본문 크기의 Trinity `display`와 높이 보정을 사용한다.
+`exam(paper: "a4")`는210×297mm 용지에 직접 조판한다. 본문·발문·자료·보기·선지는10.5pt,
+표는9pt이며, 수식도 본문 크기의 Trinity `display`와 높이 보정을 사용한다.
 서체는 평가원 계열의 공용 profile을 유지하고, 인쇄판 크기는 `fonts.typ`의 `sizes.print-*`,
 판면은 `theme.typ`의 `print-geometry`에서 조정한다. 좌우15mm·단간7mm로 두 단의 폭은각86.5mm다.
 
 마인크래프트는 `minecraft-paper(flow: "continuous")`로20문항을 순서대로 배치한다.
-원본의 쪽당5문항·수동 단 나눔 대신 문항 전체가 다음 단·쪽으로 이동하며, 현재 A4판은8쪽이다.
+원본의 쪽당5문항·수동 단 나눔 대신 문항 전체가 다음 단·쪽으로 이동하며, 현재 A4판은6쪽이다.
 단위가 붙은 수와 긴 분수 선지는3열로, 좌표는3열·세 분수 묶음은2열로 읽는다.
 짧은5열 선지는 번호 폭12pt·열 간격3pt로 조정하여 열벡터와 분수가 단끝을 넘지 않게 한다.
 `total-pages: auto`를 사용하여내용이 늘어나도 머리말·하단의 전체 쪽수가 실제 출력과 일치한다.
@@ -165,18 +165,18 @@ $ mat(1, 1, 3; 1, -1, 1; augment: #2) $
 ]
 ```
 
-일반 원고도 `paper: "a4"`에서 같은11pt를 사용한다. 고정4쪽 등 수동 페이지 구성을 가져오면
+일반 원고도 `paper: "a4"`에서 같은10.5pt를 사용한다. 고정4쪽 등 수동 페이지 구성을 가져오면
 읽기 크기에 따라 실제 쪽수가 달라지므로, 문항을 자연스럽게 이어 쓰고 `total-pages: auto`를 사용한다.
 긴 행렬·연립식 선지는1·2열로 쓰며 넓은 표시 수식은 `&`와 `\\`로 정렬한다.
 원본 비율을 유지한 축소 출력은 `paper: "a4-scaled"`에서 별도로 선택할 수 있다.
 
 ## Story와 예시
 
-32개 story·54개 SVG snapshot: 시험지·문항·선지·자료 14개, 키 큰 수식 6개, 행렬·연립식 5개, 비트맵 이미지 1개, 과목별 조판 3개, 정답·해설 3개이다. 수식 story는 키 큰 인라인 수식, 표시 수식과 정렬, 수식 자료와 보기, 키 큰 수식 선지, 단과 쪽 경계 수식, 전체 수식 검증 시험지로 구성된다. `subjects.stories.typ`은 세 과목 profile 비교·국어형 지문·수학형 응답 구분을 실제 시험 판면에 놓는다.
+32개 story·52개 SVG snapshot: 시험지·문항·선지·자료 14개, 키 큰 수식 6개, 행렬·연립식 5개, 비트맵 이미지 1개, 과목별 조판 3개, 정답·해설 3개이다. 수식 story는 키 큰 인라인 수식, 표시 수식과 정렬, 수식 자료와 보기, 키 큰 수식 선지, 단과 쪽 경계 수식, 전체 수식 검증 시험지로 구성된다. `subjects.stories.typ`은 세 과목 profile 비교·국어형 지문·수학형 응답 구분을 실제 시험 판면에 놓는다.
 
 `fixtures/minecraft.typ`의 20문항·50점 내용을 `sample.typ`과 시험지 story가 공유한다. **Java Edition 1.21.1 바닐라**를 기준으로 실제 구현과 제작법을 확인했다. 혼합 스택의 신호 역산, 넘침 보호 분류기, 잠금과 펄스 연장, 쿨다운, 작물의 흡수 전이행렬, 연료·제작 정수 최적화, 양조 배치, 경험치, 조건부 확률, 음수 좌표와 생성 거리를 다룬다. 필요한 게임 규칙과 실험 조건은 문항 자료에 명시한다. 검산 및 공식 파일 출처는 [MINECRAFT-SOURCES.md](MINECRAFT-SOURCES.md)에 있다.
 
-숨은 정답·해설을 `fixtures/minecraft-answers.typ`에서 읽어 정답표와 20문항 전체 해설을 담은 A4 PDF를 만든다. `answers.typ`과 `stories/answers.stories.typ`은 같은 `answer-sheet`를 사용하며, 해설의 분수 등식에도 `display`를 적용한다. 현재 기본 2단 답지는 4쪽, 1단은 6쪽이다. 답지 story에서는 전체 1단·2단, 정답표 5열·10열, 계산이 긴 개별 해설 6개를 비교할 수 있다. 문제지에는 해설이 렌더되지 않는다. 원본 판형 문제지 각 쪽은 5문항이고, 첫 쪽은 왼쪽 2문항/오른쪽 3문항, 계속 쪽은 왼쪽 3문항/오른쪽 2문항이다. 긴 자료·행렬·이미지까지 포함하면서 원본 판면의 단폭·폰트 크기를 유지한다.
+숨은 정답·해설을 `fixtures/minecraft-answers.typ`에서 읽어 정답표와 20문항 전체 해설을 담은 A4 PDF를 만든다. `answers.typ`과 `stories/answers.stories.typ`은 같은 `answer-sheet`를 사용하며, 해설의 분수 등식에도 `display`를 적용한다. 현재 기본 2단 답지는 4쪽, 1단은 5쪽이다. 답지 story에서는 전체 1단·2단, 정답표 5열·10열, 계산이 긴 개별 해설 6개를 비교할 수 있다. 문제지에는 해설이 렌더되지 않는다. 원본 판형 문제지 각 쪽은 5문항이고, 첫 쪽은 왼쪽 2문항/오른쪽 3문항, 계속 쪽은 왼쪽 3문항/오른쪽 2문항이다. 긴 자료·행렬·이미지까지 포함하면서 원본 판면의 단폭·폰트 크기를 유지한다.
 
 `assets/minecraft/`의 흑백 PNG 두 장은 내장 이미지 생성 도구로 제작했다. 7번의 자동 제련 장치와 14번의 양조기에 사용하며, [PROMPTS.md](assets/minecraft/PROMPTS.md)에 원문 프롬프트를 보존했다. 그림은 외형 삽화이고 전송·연료·양조 조건은 자료의 글과 표로 정한다. `stories/images.stories.typ`에서 두 이미지·폭 45/60/80%·자료/보기·수능/A4를 바꿀 수 있다. `fixtures/block-diagrams.typ`의 벡터 도형은 독립적인 컴포넌트 예시로 유지한다.
 

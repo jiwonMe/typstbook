@@ -160,7 +160,7 @@ pnpm dev examples/kice-korean
 pnpm dev:kice-general
 ```
 
-`demo-pkg` has callout, resume, and math stories. `kice-korean` is a KICE-style Korean reading exam (passages, questions, `<보기>`, commentary pages). [`kice-general`](examples/kice-general/README.md) follows measured KICE math, Korean and science PDF layouts with shared fonts, subject typography profiles and an advanced Minecraft Java 1.21.1 examination (20 questions, 4 reference pages or 8 A4 print pages, 32 stories). It includes generated grayscale bitmaps, a shared answer and explanation sheet in Toss Product Sans and Bookk Myungjo, tall math, matrices, systems, and page-boundary checks. The A4 print preset reflows at 11pt with automatic pagination; the original-size and scaled A4 presets are also available. Its launcher registers the bundled fonts consistently for SVG and PDF.
+`demo-pkg` has callout, resume, and math stories. `kice-korean` is a KICE-style Korean reading exam (passages, questions, `<보기>`, commentary pages). [`kice-general`](examples/kice-general/README.md) follows measured KICE math, Korean and science PDF layouts with shared fonts, subject typography profiles and an advanced Minecraft Java 1.21.1 examination (20 questions, 4 reference pages or 6 A4 print pages, 32 stories). It includes generated grayscale bitmaps, a shared answer and explanation sheet in Toss Product Sans and Bookk Myungjo, tall math, matrices, systems, and page-boundary checks. The A4 print preset reflows at 10.5pt with automatic pagination; the original-size and scaled A4 presets are also available. Its launcher registers the bundled fonts consistently for SVG and PDF.
 
 ```bash
 pnpm test             # unit tests (packages/server)
