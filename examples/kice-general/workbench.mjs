@@ -16,7 +16,7 @@ const command = process.argv[2] ?? "dev";
 const extra = process.argv.slice(3);
 let executable;
 let args;
-if (["pdf", "pdf:a4", "pdf:math", "pdf:structures", "pdf:answers"].includes(command)) {
+if (["pdf", "pdf:a4", "pdf:math", "pdf:structures", "pdf:answers", "pdf:korean", "pdf:korean:a4", "pdf:korean:pixel"].includes(command)) {
   mkdirSync(join(packageRoot, "dist"), { recursive: true });
   executable = "typst";
   const [source, output] = {
@@ -25,14 +25,17 @@ if (["pdf", "pdf:a4", "pdf:math", "pdf:structures", "pdf:answers"].includes(comm
     "pdf:math": ["math-sample.typ", "math-stress.pdf"],
     "pdf:structures": ["structures-sample.typ", "math-structures.pdf"],
     "pdf:answers": ["answers.typ", "minecraft-answers.pdf"],
+    "pdf:korean": ["korean-sample.typ", "korean-reference.pdf"],
+    "pdf:korean:a4": ["korean-sample.typ", "korean-a4.pdf"],
+    "pdf:korean:pixel": ["korean-pixel.typ", "korean-pixel.pdf"],
   }[command];
   args = ["compile", "--root", packageRoot, join(packageRoot, source), join(packageRoot, "dist", output),
-    ...(command === "pdf:a4" ? ["--input", "paper=a4"] : []), ...extra];
+    ...(["pdf:a4", "pdf:korean:a4"].includes(command) ? ["--input", "paper=a4"] : []), ...extra];
 } else if (["dev", "test", "build"].includes(command)) {
   executable = process.execPath;
   args = ["--import", join(repoRoot, "node_modules/tsx/dist/loader.mjs"), join(repoRoot, "packages/server/src/cli.ts"), command, packageRoot, ...extra];
 } else {
-  throw new Error("Usage: node examples/kice-general/workbench.mjs [dev|test|build|pdf|pdf:a4|pdf:math|pdf:structures|pdf:answers] [options]");
+  throw new Error("Usage: node examples/kice-general/workbench.mjs [dev|test|build|pdf|pdf:a4|pdf:math|pdf:structures|pdf:answers|pdf:korean|pdf:korean:a4|pdf:korean:pixel] [options]");
 }
 const child = spawn(executable, args, { cwd: repoRoot, env: environment, stdio: "inherit" });
 child.on("error", (error) => { console.error(error.message); process.exitCode = 1; });

@@ -3,6 +3,65 @@
 #import "typography.typ": typography-profiles, print-typography-profiles, typography-state, typography-config, print-mode
 
 #let material-stroke = 0.36pt
+#let korean-view-title = (
+  width: 45.06pt, height: 11.5pt, baseline: 9.289898pt, center-offset: 0.03pt,
+  left-angle-x: -0.18pt, left-angle-width: 7.964285pt,
+  bo-x: 7.3801pt, gi-x: 26.81786pt,
+  right-angle-x: 37.74286pt, right-angle-width: 8.01895pt,
+)
+#let quotation-layout = (
+  top-gap: 0.561pt, left: 1.98pt, right: -2.04pt,
+  x: 8.52pt, top: 9.338102pt, bottom: 9pt,
+  reference-top-stroke: 0.30pt,
+)
+
+// An inner quotation frame used by Korean questions that quote a second
+// source inside <보기>. Its prose keeps the same serif role and 95% measure.
+#let quotation(body, height: auto, font-config: fonts) = context {
+  let style = typography-config()
+  let unit(value) = value * (text.size / style.body-size)
+  let reference = typography-state.get() == "korean" and not print-mode.get()
+  let stroke = unit(material-stroke)
+  set text(font: font("body", config: font-config))
+  set par(justify: true, leading: style.material-leading, spacing: style.material-leading,
+    first-line-indent: (amount: style.first-indent / style.body-size / 0.95 * 1em, all: true))
+  v(unit(quotation-layout.top-gap))
+  pad(left: unit(quotation-layout.left), right: unit(quotation-layout.right),
+    block(width: 100%, height: if height == auto { auto } else { unit(height) },
+      stroke: if reference { (left: stroke, right: stroke) } else { stroke }, breakable: false,
+      inset: (x: unit(quotation-layout.x), top: unit(quotation-layout.top), bottom: unit(quotation-layout.bottom)),
+      above: 0pt, below: 0pt)[
+      #if reference {
+        // The selected source uses a 0.30pt upper cap and 0.36pt sides/bottom.
+        // Separate lines also preserve its cap ends beyond the side centers.
+        place(top + left, dx: -unit(quotation-layout.x) - stroke / 2,
+          dy: -unit(quotation-layout.top),
+          line(length: 100% + 2 * unit(quotation-layout.x) + stroke,
+            stroke: unit(quotation-layout.reference-top-stroke)))
+        place(bottom + left, dx: -unit(quotation-layout.x) - stroke / 2,
+          dy: unit(quotation-layout.bottom),
+          line(length: 100% + 2 * unit(quotation-layout.x) + stroke, stroke: stroke))
+      }
+      #if print-mode.get() { print-prose(as-blocks(body)) } else { as-blocks(body) }#parbreak()
+    ])
+}
+
+#let reference-view-title(unit, font-config) = context {
+  let t = korean-view-title
+  let glyph(role, body, x, width: auto) = {
+    let letters = box(text(font: font(role, config: font-config), size: unit(sizes.body),
+      tracking: 0em, top-edge: 0pt, bottom-edge: 0pt, body))
+    let ratio = if width == auto { 95% } else { unit(width) / measure(letters).width * 100% }
+    place(top + left, dx: unit(x), dy: unit(t.baseline),
+      box(scale(x: ratio, y: 100%, reflow: true, letters)))
+  }
+  box(width: unit(t.width), height: unit(t.height), fill: white)[
+    #glyph("label", [<], t.left-angle-x, width: t.left-angle-width)
+    #glyph("body", [보], t.bo-x)
+    #glyph("body", [기], t.gi-x)
+    #glyph("label", [>], t.right-angle-x, width: t.right-angle-width)
+  ]
+}
 // General source material: serif body text inside a complete rectangle.
 #let material(body, title: none, justify: auto, font-config: fonts) = context {
   let name = typography-state.get()
@@ -56,12 +115,14 @@
       let heading-text = if title == auto {
         [#text(font: font("label", config: font-config))[<]#text(font: font("body", config: font-config))[보#h(0.35em)기]#text(font: font("label", config: font-config))[>]]
       } else { as-content(title) }
-      let heading = box(scale(x: 95%, y: 100%, reflow: true, box(
+      let reference-korean = name == "korean" and not print-mode.get() and title == auto
+      let heading = if reference-korean { reference-view-title(unit, font-config) } else { box(scale(x: 95%, y: 100%, reflow: true, box(
         fill: white,
         inset: (x: 0.35em),
         text(font: font("body", config: font-config), size: unit(if print-mode.get() { sizes.print-body } else { sizes.body }), heading-text),
-      )))
-      place(top + center, dy: -inset-top - measure(heading).height / 2, heading)
+      ))) }
+      place(top + center, dx: if reference-korean { unit(korean-view-title.center-offset) } else { 0pt },
+        dy: -inset-top - measure(heading).height / 2, heading)
     }
     #if print-mode.get() { print-prose(as-blocks(body)) } else { as-blocks(body) }
     #parbreak()

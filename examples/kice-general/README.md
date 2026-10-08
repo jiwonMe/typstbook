@@ -13,12 +13,19 @@ node examples/kice-general/workbench.mjs pdf:a4
 node examples/kice-general/workbench.mjs pdf:math
 node examples/kice-general/workbench.mjs pdf:structures
 node examples/kice-general/workbench.mjs pdf:answers
+node examples/kice-general/workbench.mjs pdf:korean
+node examples/kice-general/workbench.mjs pdf:korean:a4
+node examples/kice-general/workbench.mjs pdf:korean:pixel
 node examples/kice-general/workbench.mjs test
 # 의도한 디자인 변경 후 baseline 갱신
 node examples/kice-general/workbench.mjs test --update
 ```
 
 `pnpm dev:kice-general`, `pnpm pdf:kice-general`, `pnpm pdf:kice-general:a4`, `pnpm test:kice-general`도 같은 명령이다. 원본 판형 문제지는 `dist/minecraft.pdf`, A4 인쇄판은 `dist/minecraft-a4.pdf`, 정답·해설은 `dist/minecraft-answers.pdf`, 수식 검증 PDF는 `dist/math-stress.pdf`, 행렬·연립식 검증 PDF는 `dist/math-structures.pdf`에 나온다. `build --out <경로>`는 기존 typstbook의 정적 story 빌드를 사용한다.
+
+국어 확충 예시는 `dist/korean-reference.pdf`(평가원 판형)와 `dist/korean-a4.pdf`(A4)에 나온다. 독서·운문·극·작문·매체의 창작 10문항이며, 두 판형이 `fixtures/korean-components.typ`의 같은 원고를 사용한다. 검토한 기출 PDF와 형식별 관찰·측정값은 [KOREAN-REFERENCE.md](KOREAN-REFERENCE.md)에 기록했다.
+
+`pdf:korean:pixel`은 `dist/korean-pixel.pdf`를 만든다. **2026학년도 6월 모의평가 국어 1쪽**의 머리말·31행 지문·보기·선지를 고정 좌표로 대조하는 창작 기준판이다. 원본 본문을 복제하지 않으며, 모든 글리프가 완전히 같은 픽셀로 재현되지는 않는다. 측정 범위와 결과는 [PIXEL-CALIBRATION.md](PIXEL-CALIBRATION.md)에 기록한다.
 
 ## 폰트는 한 곳에서 관리
 
@@ -144,6 +151,81 @@ $ mat(1, 1, 3; 1, -1, 1; augment: #2) $
 
 전체 답지는 기본 2단이고 `columns: 1`로 바꿀 수 있다. 문항 사이에 여유를 두고 문항 전체를 같은 단에 유지한다. 긴 등식은 본문 크기의 별도 수식 줄로, 기대값처럼 여러 단계인 계산은 `&`와 `\\`로 정렬해 작성한다. 내용과 열 수에 따라 쪽수가 자연스럽게 늘어난다.
 
+## 국어 자료 컴포넌트
+
+`exam(typography: "korean", layout: "standard", subject: none)`에서 다음 20개 함수를 조합한다. 지문·발화·주석·보기 안의 인용문은 명조이며, 안내·화자·자료 라벨은 중앙 글꼴 역할을 따른다.
+
+| API | 작성과 배치 |
+| --- | --- |
+| `instruction(from, to:, body:)` | 문항 범위와 안내를 다음 자료에 붙임 |
+| `passage-heading(label, alignment:)` | (가)/(나) 등 지문 라벨을 뒤 본문에 붙임 |
+| `framed-passage(body, height: auto)` | 긴 지문의 연속 프레임; 중간 단·쪽에는 좌우 선만 유지. 고정 높이는 분할하지 않는 좌표 대조용 |
+| `passage-sections(sections)` | `(label: [...], body: [...])` tuple을 한 프레임에 배치; `label` 생략 가능 |
+| `paired-passage(ga, na)` | (가)/(나) 두 지문과 프레임을 함께 작성 |
+| `verse(stanzas, keep-stanzas:)` | 행 tuple의 tuple로 행·연 보존; 긴 행은 내어쓰기 |
+| `source-line(author, title)` | 오른쪽 출처; 제목에 `「 」` 자동 부착 |
+| `passage-notes(items)` | `(term: [...], body: [...])` tuple의 작은 어휘 풀이 |
+| `excerpt-gap(label:)` | 가운데 생략 표시; 기본 `[중략]` |
+| `marked-range(label, body, side:, label-align:, keep:)` | `left`/`right` 범위 괄호와 라벨, 본문 폭 확보 |
+| `synopsis(body)` | 앞부분 줄거리 라벨과 설명 |
+| `dialogue(turns, speaker-width:, hanging-indent:, speaker-size:, gap:)` | `(speaker: [...], body: [...])` tuple; 화자 칸과 후속 줄 들여쓰기를 각각 조절 |
+| `stage-direction(body)` | 화자 없는 독립 무대지시문 |
+| `draft(body, title:)` | 제목이 있는 초고 프레임; `title: none`으로 제목 생략 |
+| `editor-note(label, body)` | 수정 지시 라벨과 내어쓴 설명 |
+| `writing-plan(stages, direction:)` | `(title: [...], body: [...])` 1–4단계; `"auto"`/`"row"`/`"column"` 방향 |
+| `media-window(body, title:, toolbar:, caption:)` | 흑백 자료 화면, 도구 영역과 캡션 |
+| `media-post(author, body, time:)` | 게시글·댓글의 작성자와 본문 |
+| `reading-set(from:, to:, lead:, sections:, questions:, gap:)` | 안내·지문·문항을 자연스러운 단 흐름에 배치; `questions`는 문항 content의 tuple |
+| `quotation(body, height:)` | `<보기>` 안의 명조 인용 상자; 짧은 인용문 전체 유지 |
+
+`passage-sections`·`paired-passage`에는 프레임이 이미 포함되어 있다. `framed-passage`로 다시 감싸면 테두리와 안쪽 여백이 중복된다. `verse`·`marked-range`의 기본 `auto`는 짧은 연·범위를 함께 유지하고 긴 내용은 단·쪽에서 나눈다. `keep-stanzas: false`·`keep: false`로 분할을 허용할 수 있다. 긴 범위의 라벨은 첫 조각에 놓이며, `source-line`의 제목에는 괄호 없는 이름만 전달한다.
+
+| 중앙 설정 | 조절 대상 |
+| --- | --- |
+| `fonts.typ`의 `korean-instruction`·`korean-speaker`·`korean-section` | 안내·화자·지문 라벨의 가족; 안내·라벨 크기는 `sizes.body`/`print-body`, 화자는 `sizes.korean-speaker`/`print-korean-speaker` |
+| `korean-layout` | 프레임 여백·선, 안내 간격, 연·출처·주석 간격, 범위 표지 폭과 함께 유지할 높이 |
+| `korean-material-layout` | 화자 간격, 초고 제목, 개요 카드, 매체 패널 여백·선 |
+| `quotation-layout`·`korean-view-title` | 보기 내부 인용 상자와 국어 보기 제목의 기하 |
+| `korean-reference-geometry` | 원본·축소판의 국어 머리말·쪽번호·중앙선 좌표; A4 전용 판면은 `print-geometry` |
+
+자료와 문항을 함께 쓰는 예시는 다음과 같다. `reading-set`은 지문 뒤의 남은 공간부터 문항을 이어 놓으며, 문항 자체는 나누지 않는다.
+
+```typ
+#import "src/lib.typ": *
+#show: exam.with(typography: "korean", layout: "standard", subject: none, paper: "a4")
+
+#reading-set(
+  from: 1,
+  sections: (
+    (label: [(가)], body: [청크의 저장 여부와 현재 갱신 여부를 구별해야 실험을 비교할 수 있다.]),
+    (label: [(나)], body: [
+      #verse((([지도에 남은 한 칸], [그 안의 밤은 아직 움직이지 않는다]),))
+      #source-line([창작], [한 칸])
+    ]),
+  ),
+  questions: (
+    question(1, [두 자료의 공통된 관점으로 적절한 것은?], body: [
+      #choices([저장과 갱신을 구별한다.], [모든 청크가 늘 갱신된다.],
+        [지도만으로 시간을 잰다.], [밤에는 기록을 지운다.], [저장된 공간은 사라진다.])
+    ]),
+  ),
+)
+```
+
+대화의 자동 화자 폭은 가장 긴 이름을 기준으로 한다. 원고의 특정 내어쓰기를 재현하려면 `speaker-width`와 `hanging-indent`를 별도로 지정한다. 보기 안에 인용 상자가 필요한 경우도 같은 본문 글꼴을 사용한다.
+
+```typ
+#view[
+  #dialogue((
+    (speaker: [학생], body: [저장된 청크라면 작물도 지금 자라고 있을까요?]),
+    (speaker: [연구자], body: [아래 기록의 두 상태를 먼저 구별해 보세요.]),
+  ), speaker-width: 3.3em, hanging-indent: 1.65em)
+  #quotation[저장 여부는 공간의 기록이고, 갱신 여부는 현재의 처리 상태이다.]
+]
+```
+
+원본과 축소판의 정밀 기하 보정은 읽기 크기로 다시 조판하는 `paper: "a4"`와 분리되어 있다. A4 전용판은 같은 창작 원고를 자연스럽게 배치한다.
+
 ## A4 인쇄판
 
 `exam(paper: "a4")`는210×297mm 용지에 직접 조판한다. 본문·발문·자료·보기·선지는10.5pt,
@@ -180,7 +262,9 @@ $ mat(1, 1, 3; 1, -1, 1; augment: #2) $
 
 ## Story와 예시
 
-32개 story·51개 SVG snapshot: 시험지·문항·선지·자료 14개, 키 큰 수식 6개, 행렬·연립식 5개, 비트맵 이미지 1개, 과목별 조판 3개, 정답·해설 3개이다. 수식 story는 키 큰 인라인 수식, 표시 수식과 정렬, 수식 자료와 보기, 키 큰 수식 선지, 단과 쪽 경계 수식, 전체 수식 검증 시험지로 구성된다. `subjects.stories.typ`은 세 과목 profile 비교·국어형 지문·수학형 응답 구분을 실제 시험 판면에 놓는다.
+41개 story·66개 SVG snapshot이다. 기존 시험지·문항·수식·이미지·과목별 조판·해설 32개에 국어 자료 8개와 첫 쪽 픽셀 기준판 1개를 더했다. 수식 story는 키 큰 인라인 수식, 표시 수식과 정렬, 수식 자료와 보기, 키 큰 수식 선지, 단과 쪽 경계 수식, 전체 수식 검증 시험지로 구성된다. `subjects.stories.typ`은 세 과목 profile 비교·국어형 지문·수학형 응답 구분을 실제 시험 판면에 놓는다.
+
+`stories/korean.stories.typ`은 비교 독서·운문과 풀이·극·개요와 초고·매체 화면·양쪽 범위 괄호·창작 10문항을 원본/A4에서 비교한다. 범위 괄호는 좌우를 바꿀 수 있다. `stories/korean-pixel.stories.typ`은 원본과 A4 축소판의 고정 좌표 대조용이다. 국어 검증은 26변형·직접 출력 2개·경계 검사 7개, 총 35개 PDF/52쪽을 확인했다. A4 창작 문제지는 4쪽, 원본은 3쪽이며 동일 설정의 story와 직접 PDF는 픽셀 차이가 없고, 진단 오류와 용지 밖 글리프도 없었다.
 
 `fixtures/minecraft.typ`의 20문항·50점 내용을 `sample.typ`과 시험지 story가 공유한다. **Java Edition 1.21.1 바닐라**를 기준으로 실제 구현과 제작법을 확인했다. 혼합 스택의 신호 역산, 넘침 보호 분류기, 잠금과 펄스 연장, 쿨다운, 작물의 흡수 전이행렬, 연료·제작 정수 최적화, 양조 배치, 경험치, 조건부 확률, 음수 좌표와 생성 거리를 다룬다. 필요한 게임 규칙과 실험 조건은 문항 자료에 명시한다. 검산 및 공식 파일 출처는 [MINECRAFT-SOURCES.md](MINECRAFT-SOURCES.md)에 있다.
 

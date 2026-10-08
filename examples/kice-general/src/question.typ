@@ -10,23 +10,28 @@
 // A complete question is kept together in the exam's two-column flow.
 #let question(number, prompt, points: none, show-points: auto, body: none, font-config: fonts) = context {
   let style = typography-config()
+  let reference-korean = typography-state.get() == "korean" and not print-mode.get()
   // First-line text clears the number; continuation lines use a smaller indent.
   // These widths are laid out before the paragraph's 95% horizontal scale.
-  let prompt-indent = (if type(number) == int and number < 10 { 18.84pt } else { 25.8pt }) / style.body-size / 0.95 * 1em
+  let prompt-indent = (if type(number) == int and number < 10 {
+    if reference-korean { style.prompt-indent } else { 18.84pt }
+  } else { if reference-korean { style.prompt-indent-wide } else { 25.8pt } }) / style.body-size / 0.95 * 1em
   let show-score = if show-points == auto { points != none and (style.all-points or points != 2) } else { show-points and points != none }
   set text(font: font("body", config: font-config))
   set par(first-line-indent: 0pt, justify: false)
   block(breakable: false, width: 100%, above: 0pt, below: 0pt)[
     #text(font: font("prompt", config: font-config))[
       #par(hanging-indent: 11.28pt / style.body-size / 0.95 * 1em)[
-        #box(width: prompt-indent, box(scale(x: style.number-scale / 95% * 100%, y: 100%, reflow: true, text(
+        #box(width: prompt-indent, box(move(dy: if reference-korean { style.number-baseline-offset / style.body-size * 1em } else { 0pt }, scale(x: style.number-scale / 95% * 100%, y: 100%, reflow: true, text(
           font: font("number", config: font-config),
           weight: 400,
           size: (if print-mode.get() { sizes.print-question-number } else { sizes.question-number }) / style.body-size * 1em,
           stretch: 100%,
           tracking: -0.05em,
           str(number) + ".",
-        ))))#if print-mode.get() { print-prose(as-content(prompt)) } else { as-content(prompt) }#if show-score {
+        )))))#if print-mode.get() { print-prose(as-content(prompt)) } else if reference-korean {
+          text(size: style.prompt-size / style.body-size * 1em, as-content(prompt))
+        } else { as-content(prompt) }#if show-score {
           if print-mode.get() { [~#box(text("[" + str(points) + "점]"))] }
           else { [ #box(text("[" + str(points) + "점]"))] }
         }

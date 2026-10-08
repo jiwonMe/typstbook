@@ -1,17 +1,18 @@
 #import "fonts.typ": fonts, font, body-style
-#import "theme.typ": geometry, sizes, paper-presets
+#import "theme.typ": geometry, korean-reference-geometry, sizes, paper-presets
 #import "typography.typ": typography-profiles, typography-state, print-mode
 #import "a4-exam.typ": a4-exam
 
-#let page-box(current, total, scale: 1, font-config: fonts) = box(
-  width: 50.52pt * scale, height: 21.96pt * scale, stroke: 0.36pt * scale,
+#let page-box(current, total, scale: 1, font-config: fonts, typography: "science") = box(
+  width: 50.52pt * scale, height: (if typography == "korean" { korean-reference-geometry.page-height } else { 21.96pt }) * scale, stroke: 0.36pt * scale,
   {
     set text(font: font("number", config: font-config), size: sizes.footer * scale)
     set text(top-edge: "bounds", bottom-edge: "bounds")
     let digits(value) = box(std.scale(x: 95%, y: 100%, reflow: true, box(str(value))))
-    place(line(start: (0pt, 21.96pt * scale), end: (50.52pt * scale, 0pt), stroke: 0.36pt * scale))
-    place(top + left, dx: 4.26pt * scale, dy: 2.58pt * scale, digits(current))
-    place(top + right, dx: -4.248pt * scale, dy: 9.78pt * scale,
+    place(line(start: (0pt, (if typography == "korean" { korean-reference-geometry.page-height } else { 21.96pt }) * scale), end: (50.52pt * scale, 0pt), stroke: 0.36pt * scale))
+    place(top + left, dx: (if typography == "korean" { korean-reference-geometry.page-current-x } else { 4.26pt }) * scale,
+      dy: 2.58pt * scale, digits(current))
+    place(top + right, dx: (if typography == "korean" { korean-reference-geometry.page-total-x } else { -4.248pt }) * scale, dy: 9.78pt * scale,
       text(tracking: -0.0379em, digits(total)))
   },
 )
@@ -52,29 +53,39 @@
 #let exam-header(
   year: 2027, session: [6월 모의평가], area: [게임탐구], subject: [마인크래프트],
   period: 4, form: none, selected: true, first: true, current: 1, layout: "elective",
-  scale: 1, width: 666.3pt, font-config: fonts,
+  scale: 1, width: 666.3pt, font-config: fonts, typography: "science",
 ) = {
   set text(tracking: 0em, stretch: 100%, fill: black, top-edge: "bounds", bottom-edge: "bounds")
   set par(justify: false, leading: 0pt, spacing: 0pt)
   let role(name, size, body) = text(font: font(name, config: font-config), size: size * scale, body)
   let narrow(body, ratio: 90%, y-ratio: 100%) = box(std.scale(x: ratio, y: y-ratio, reflow: true, box(body)))
+  let korean = typography == "korean"
+  let kg = korean-reference-geometry
   if first {
     place(top + left, dx: geometry.left * scale, dy: 116.64pt * scale,
       box(width: width, align(center, narrow(text(tracking: -0.0018em, spacing: 125.75%,
         role("title", sizes.exam-name,
           [#text(tracking: -0.0348em, str(year))학년도 대학수학능력시험#if session != none and session != "" [ #session] 문제지])), ratio: 85%))))
-    place(top + left, dx: (geometry.left - 0.12pt) * scale, dy: 153.24pt * scale,
+    place(top + left, dx: (geometry.left + if korean { kg.area-dx } else { -0.12pt }) * scale,
+      dy: (if korean { kg.area-top } else { 153.24pt }) * scale,
       box(width: width, align(center, narrow(role("heading", sizes.area,
-        [#text(stroke: 1.186pt * scale, tracking: 0.05em)[#area#h(10pt * scale)영역]#if subject != none [#box(std.scale(x: 84.6667% / 90% * 100%, y: 100%, reflow: true,
-          box(text(size: sizes.subject * scale, stroke: 0.559pt * scale)[(#subject)])))]]), ratio: 90.62%, y-ratio: 103.35%))))
-    place(top + left, dx: geometry.left * scale, dy: 157.321pt * scale,
-      box(width: 90.72pt * scale, height: 31.14pt * scale,
+        [#text(stroke: 1.186pt * scale, tracking: 0.05em)[#area#if korean [#h(kg.area-gap * scale)#text(tracking: kg.area-word-tracking)[영역]] else [#h(10pt * scale)영역]]#if subject != none [#box(std.scale(x: 84.6667% / 90% * 100%, y: 100%, reflow: true,
+          box(text(size: sizes.subject * scale, stroke: 0.559pt * scale)[(#subject)])))]]),
+          ratio: if korean { kg.area-x } else { 90.62% },
+          y-ratio: if korean { kg.area-y } else { 103.35% }))))
+    place(top + left, dx: (if korean { kg.capsule-x } else { geometry.left }) * scale,
+      dy: (if korean { kg.capsule-top } else { 157.321pt }) * scale,
+      box(width: (if korean { kg.capsule-width } else { 90.72pt }) * scale,
+        height: (if korean { kg.capsule-height } else { 31.14pt }) * scale,
         radius: 18pt * scale, stroke: 0.54pt * scale,
-        align(center + horizon, move(dx: -0.683pt * scale, dy: -1.266pt * scale,
+        align(center + horizon, move(dx: (if korean { kg.period-dx } else { -0.683pt }) * scale,
+          dy: (if korean { kg.period-dy } else { -1.266pt }) * scale,
           box(std.scale(x: 72.9112%, y: 97.151%, reflow: true, box(text(tracking: 0.1864em,
             role("number", sizes.period, [제#period;교시])))))))))
-    place(top + right, dx: -geometry.right * scale, dy: 111.5pt * scale,
-      narrow(role("number", sizes.corner-page, [#current])))
+    place(top + right, dx: -geometry.right * scale,
+      dy: (if korean { kg.corner-top } else { 111.5pt }) * scale,
+      narrow(role("number", sizes.corner-page, [#current]),
+        y-ratio: if korean { kg.corner-y } else { 100% }))
     if layout == "elective" {
       place(top + left, dx: geometry.left * scale, dy: 210.661pt * scale,
         box(width: width, candidate-fields(selected: selected, scale: scale, font-config: font-config)))
@@ -109,13 +120,22 @@
     line(length: width + if first { 0.72pt * scale } else { 0pt }, stroke: geometry.header-rule * scale))
 }
 
-#let exam-footer(current, total, notice: none, scale: 1, font-config: fonts) = {
+#let exam-footer(current, total, notice: none, scale: 1, font-config: fonts, typography: "science") = {
   set text(tracking: 0em, stretch: 100%)
-  place(top + center, dx: -0.04pt * scale, dy: 1082.101pt * scale, page-box(current, total, scale: scale, font-config: font-config))
+  place(top + center, dx: -0.04pt * scale, dy: 1082.101pt * scale,
+    page-box(current, total, scale: scale, font-config: font-config, typography: typography))
   if notice != none {
-    place(top + right, dx: -73pt * scale, dy: 1105.35pt * scale,
-      text(font: font("notice", config: font-config), size: sizes.notice * scale,
-        fill: rgb("1f4ea8"), notice))
+    if typography == "korean" {
+      let kg = korean-reference-geometry
+      place(top + right, dx: -kg.notice-right * scale, dy: kg.notice-top * scale,
+        box(std.scale(x: kg.notice-x, y: kg.notice-y, reflow: true,
+          box(text(font: font("notice", config: font-config), size: sizes.notice * scale,
+            fill: kg.notice-fill, notice)))))
+    } else {
+      place(top + right, dx: -73pt * scale, dy: 1105.35pt * scale,
+        text(font: font("notice", config: font-config), size: sizes.notice * scale,
+          fill: rgb("1f4ea8"), notice))
+    }
   }
 }
 
@@ -170,12 +190,20 @@
         else { total-pages }
       exam-header(year: year, session: session, area: area, subject: subject,
         period: period, form: form, selected: selected, first: first, current: current,
-        scale: s, width: inner-width, layout: layout, font-config: font-config)
+        scale: s, width: inner-width, layout: layout, font-config: font-config, typography: typography)
       let rule-y = (if first { first-rule } else { geometry.running-rule }) * s
-      place(top + center, dx: -0.01pt * s, dy: rule-y,
-        line(angle: 90deg, length: paper-config.height - geometry.bottom * s - rule-y,
-          stroke: geometry.column-rule * s))
-      exam-footer(current + booklet-offset, total, notice: notice, scale: s, font-config: font-config)
+      if typography == "korean" {
+        let kg = korean-reference-geometry
+        place(top + left, dx: kg.column-x * s, dy: rule-y,
+          line(angle: 90deg, length: kg.column-bottom * s - rule-y,
+            stroke: kg.column-rule * s))
+      } else {
+        place(top + center, dx: -0.01pt * s, dy: rule-y,
+          line(angle: 90deg, length: paper-config.height - geometry.bottom * s - rule-y,
+            stroke: geometry.column-rule * s))
+      }
+      exam-footer(current + booklet-offset, total, notice: notice, scale: s,
+        font-config: font-config, typography: typography)
       if first and layout == "elective" and tab-label != none and tab-label != "" {
         let letters = tab-label.replace(" ", "").clusters()
         let tab-height = calc.max(110.22pt, letters.len() * 17pt + 18pt) * s
