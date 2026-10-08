@@ -1,6 +1,9 @@
 #import "fonts.typ": fonts, font, sizes
-#import "inline.typ": as-content
-#import "typography.typ": typography-profiles, typography-state, typography-config, print-mode
+#import "inline.typ": as-content, print-prose
+#import "typography.typ": typography-profiles, typography-state, typography-config, print-mode, print-flow-geometry
+#import "question-flow.typ": balanced-question-flow
+
+#import "math.typ": choice-row-strut
 
 #let choice-marks = ("①", "②", "③", "④", "⑤")
 // The number shares the prompt baseline; wrapped lines begin after the number.
@@ -23,8 +26,9 @@
           stretch: 100%,
           tracking: -0.05em,
           str(number) + ".",
-        ))))#as-content(prompt)#if show-score {
-          [ #box(text("[" + str(points) + "점]"))]
+        ))))#if print-mode.get() { print-prose(as-content(prompt)) } else { as-content(prompt) }#if show-score {
+          if print-mode.get() { [~#box(text("[" + str(points) + "점]"))] }
+          else { [ #box(text("[" + str(points) + "점]"))] }
         }
       ]
     ]
@@ -49,9 +53,11 @@
     // Keep the marker and first math line in one paragraph so their baselines
     // agree even for tall fractions. The outer pad indents every later line or
     // paragraph; the first-line outdent compensates the 95% paragraph scale.
+    let row-start = calc.floor(index / columns) * columns
+    let strut = if print-mode.get() { choice-row-strut(values.slice(row-start, calc.min(row-start + columns, values.len()))) } else { [] }
     pad(left: continuation / style.body-size * 1em, {
       set par(hanging-indent: 0pt)
-      [#h(-continuation / style.body-size / 0.95 * 1em)#box(width: marker-width / style.body-size / 0.95 * 1em,
+      [#strut#h(-continuation / style.body-size / 0.95 * 1em)#box(width: marker-width / style.body-size / 0.95 * 1em,
         text(font: font("label", config: font-config), choice-marks.at(index)))#as-content(item)#parbreak()]
     })
   })
@@ -65,8 +71,12 @@
   ))
 }
 
-#let spread-questions(items, gap: 1.8em) = {
-  if items.len() > 0 {
+#let spread-questions(items, gap: 1.8em, balance: false) = context {
+  let geometry = print-flow-geometry.get()
+  if balance and print-mode.get() and geometry != none {
+    balanced-question-flow(items, gap: gap, width: geometry.width,
+      first-height: geometry.first-height, height: geometry.height)
+  } else if items.len() > 0 {
     items.at(0)
     for item in items.slice(1) {
       v(gap)

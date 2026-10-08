@@ -1,6 +1,6 @@
 #import "fonts.typ": fonts, font, sizes, body-style
 #import "theme.typ": print-geometry
-#import "typography.typ": typography-state, print-mode, print-typography-profiles
+#import "typography.typ": typography-state, print-mode, print-flow-geometry, print-typography-profiles
 
 #let print-page-box(current, total, font-config: fonts) = box(
   width: 18mm, height: 7mm, stroke: 0.4pt,
@@ -132,8 +132,14 @@
   )
   typography-state.update(typography)
   print-mode.update(true)
+  print-flow-geometry.update((
+    width: (210mm - g.left - g.right - g.gutter) / 2,
+    first-height: 297mm - g.bottom - if first-page { first-top } else { g.body-top },
+    height: 297mm - g.bottom - g.body-top,
+  ))
   body-style(size: type-config.body-size, font-config: font-config,
     tracking: type-config.tracking, leading: type-config.body-leading, {
+    set par(linebreaks: "optimized")
     if first-page { block(height: first-top - g.body-top, above: 0pt, below: 0pt)[] }
     columns(2, gutter: g.gutter, body)
   })

@@ -4,9 +4,10 @@
 // Answer sheets have their own A4 reading geometry; font families and sizes
 // stay in fonts.typ. The exam's measured KICE typography remains independent.
 #let answer-layout = (
-  margin: (x: 18mm, top: 19mm, bottom: 18mm), gutter: 8mm,
-  leading: 0.55em, tracking: -0.02em, paragraph-spacing: 0.6em,
+  margin: (x: 16mm, top: 18mm, bottom: 18mm), gutter: 8mm,
+  leading: 0.55em, tracking: -0.02em, paragraph-spacing: 0.55em,
   entry-gap: 1.05em, heading-gap: 0.45em,
+  equation-gap: 0.4em, inline-math-limit: 6em, quantity-limit: 8em,
   rule: (thickness: 0.35pt, paint: luma(72%)),
   ink-soft: luma(35%), key-fill: luma(96%),
 )
@@ -38,6 +39,23 @@
   )
 }
 
+// Bind only the final short Korean word directly before a display equation.
+// Other text runs keep their usual Korean line-breaking opportunities.
+#let answer-prose(body) = {
+  if type(body) != content { body } else {
+  let children = body.fields().at("children", default: (body,))
+  for (index, child) in children.enumerate() {
+    let next = children.slice(index + 1).find(it => it != [ ])
+    if child.func() == text and next != none and next.func() == math.equation and next.block {
+      {
+        show regex("\\b[가-힣]{2,6}$"): box
+        child
+      }
+    } else { child }
+  }
+  }
+}
+
 // Fixed number width aligns one- and two-digit questions. Keep the full
 // solution together, with a thin rule and a visible gap between entries.
 #let solution-entry(number, answer, body, points: none, font-config: answer-fonts, theme: answer-layout) = {
@@ -45,6 +63,7 @@
     #set text(font: font("body", config: font-config), size: sizes.answer-body,
       weight: answer-weights.body, tracking: theme.tracking)
     #set par(leading: theme.leading, spacing: theme.paragraph-spacing, first-line-indent: 0pt)
+    #show math.equation.where(block: true): set block(above: theme.equation-gap, below: theme.equation-gap)
     #grid(columns: (1fr, auto), align: horizon,
       [
         #box(width: 1.75em, text(font: font("number", config: font-config),
@@ -63,7 +82,23 @@
     #v(0.22em)
     #line(length: 100%, stroke: theme.rule)
     #v(theme.heading-gap)
-    #body
+    #{
+      // Keep short equalities and their fractions on one line. Longer inline
+      // expressions retain their normal wrapping.
+      show math.equation.where(block: false): it => context {
+        if measure(it).width <= theme.inline-math-limit.to-absolute() {
+          box(it)
+        } else { it }
+      }
+      // Keep quantities with their units and common Korean particles. Very
+      // long quantity lists may still wrap rather than stretching the prose.
+      show regex("\\b[0-9]+(?:·[0-9]+)*[ \\t]*(?:게임[ \\t]*틱|개|병|회|틱)(?:씩|가|를|로|에|와|과|도|만|이다|이)?"): it => context {
+        if measure(it).width <= theme.quantity-limit.to-absolute() {
+          box(it)
+        } else { it }
+      }
+      answer-prose(body)
+    }
     #parbreak()
   ]
 }
@@ -101,7 +136,7 @@
     math-adjust: true, leading: theme.leading, tracking: theme.tracking)
   set par(spacing: theme.paragraph-spacing)
   set text(weight: answer-weights.body)
-  show math.equation.where(block: true): set block(above: 0.5em, below: 0.5em)
+  show math.equation.where(block: true): set block(above: theme.equation-gap, below: theme.equation-gap)
 
   text(font: font("title", config: font-config), size: sizes.answer-title,
     weight: answer-weights.title, tracking: 0em, title)

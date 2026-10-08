@@ -45,11 +45,15 @@
 )
 #let typography-state = state("kice-general.typography", "science")
 #let print-mode = state("kice-general.print", false)
+#let print-flow-geometry = state("kice-general.print-flow-geometry", none)
 #let print-type = (
   body-size: sizes.print-body, material-size: sizes.print-body,
   body-leading: 0.55em, material-leading: 0.5em, view-leading: 0.5em,
   table-size: sizes.print-table, table-heading-size: sizes.print-table,
   compact-choice-marker: 12pt, compact-choice-gutter: 3pt,
+  material-x: 7pt, material-top: 7pt, material-bottom: 7pt,
+  view-x: 7pt, view-top: 10pt, view-bottom: 7pt,
+  material-gap: 0.4em, table-cell-y: 0.25em, statement-indent: 14pt,
 )
 #let print-typography-profiles = (
   science: typography-profiles.science + print-type,

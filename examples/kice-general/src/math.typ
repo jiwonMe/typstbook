@@ -52,3 +52,34 @@
   }
   body
 }
+
+// Equal first-line metrics for mixed numeric and fraction options.
+#let choice-row-strut(items) = context {
+  let equations(body) = {
+    if type(body) != content { () }
+    else if body.func() == math.equation {
+      if not body.block { (body,) } else { () }
+    } else if "children" in body.fields() { body.children.map(equations).flatten() }
+    else if "body" in body.fields() { equations(body.body) }
+    else { () }
+  }
+  let at-zero(content) = {
+    set par(leading: 0pt)
+    set text(top-edge: "bounds", bottom-edge: "bounds")
+    content
+  }
+  let ascent = 0pt
+  let descent = 0pt
+  for equation in items.map(equations).flatten() {
+    let height = measure(at-zero([#equation])).height
+    if height > 0.7em.to-absolute() {
+      let probe = 1000pt
+      let below = measure(at-zero([#equation#box(width: 0pt, height: probe, baseline: 0pt)])).height - probe
+      ascent = calc.max(ascent, height - below + 0.05em.to-absolute())
+      descent = calc.max(descent, below + 0.05em.to-absolute())
+    }
+  }
+  if ascent + descent > 0pt {
+    box(width: 0.01pt, height: ascent + descent, baseline: descent)
+  }
+}

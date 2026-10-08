@@ -2,7 +2,8 @@
 #import "math.typ": display, matrix-style, math-layout
 #import "theme.typ": geometry, print-geometry, sizes, paper-presets
 #import "exam.typ": exam, exam-header, exam-footer, candidate-fields, page-box, final-notice
-#import "question.typ": question, choices, choice-marks
+#import "question.typ": question, choices, choice-marks, spread-questions
+#import "question-flow.typ": balanced-question-flow
 #import "material.typ": material, view, data-table, passage, statements, response-section
 #import "typography.typ": typography-profiles
 #import "media.typ": exam-image

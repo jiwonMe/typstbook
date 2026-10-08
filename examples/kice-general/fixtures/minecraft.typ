@@ -1,9 +1,13 @@
 // Minecraft Java Edition 1.21.1. Version-pinned rules were checked against the
 // official server jar and mappings; audit details live in MINECRAFT-SOURCES.md.
 // Answer/explanation fields are never rendered on the examination paper.
-#import "../src/lib.typ": question, choices, material, view, data-table, final-notice, display, statements
+#import "../src/lib.typ": question, choices, material, view, data-table, final-notice, display, statements, spread-questions
 #import "../src/typography.typ": print-mode
 #import "minecraft-images.typ": minecraft-image
+
+// Coordinate tuples and bounds are single reading units on the narrow A4 page.
+#let print-keep(body) = context if print-mode.get() { box(body) } else { body }
+#let print-softbreak() = context if print-mode.get() { linebreak(justify: false) }
 
 #let minecraft-notice = [Java Edition 1.21.1 기준 · 비공식 창작 모의평가 문제지]
 #let minecraft-points = (2, 3, 2, 2, 3, 3, 2, 3, 3, 2, 3, 3, 2, 2, 3, 2, 2, 3, 2, 3)
@@ -89,7 +93,7 @@
     prompt: [두 경로의 합류 지점이 켜져 있는 총 게임 틱 수는?],
     material: [
       초기에는 모든 신호가 꺼져 있다. 게임 틱 0부터 2 직전까지의 켜짐 펄스를 아래 두 경로에 동시에 넣는다. 레드스톤 1틱은 게임 2틱이며 리피터는 자기 지연보다 짧은 켜짐 펄스를 자기 지연만큼 연장한다.
-      #data-table((0.4fr, 1.7fr, 1fr), header: ([경로], [리피터 연결], [지연(레드스톤 틱)]), rows: (
+      #data-table((0.4fr, 1.7fr, 1fr), header: ([경로], [리피터 연결], [#context if print-mode.get() { [지연#linebreak()#text[(레드스톤 틱)]] } else { [지연(레드스톤 틱)] }]), rows: (
         ([Ⅰ], [입력 → R₁ → R₂ → 합류], [3, 4]), ([Ⅱ], [입력 → R₃ → 합류], [4]),
       ))
       배선은 서로 되먹임하지 않는다. 어느 최종 출력이라도 켜져 있으면 합류 신호가 켜지며, 합류 지점에는 별도 지연 장치가 없다.
@@ -137,7 +141,7 @@
     prompt: [밀 A, B, C의 다음 생장 확률을 각각 $p_A,p_B,p_C$라 할 때, $display(p_B/(p_A+p_C))$는?],
     material: [
       모두 성숙 전이고 밝기는 9 이상이며 바로 아래 경작지의 수분은 7이다. 생장 점수 $S$는 기본 1에 아래 토양 점수와 주변 8칸 토양 점수의 1/4씩을 더한 값이다. 수분이 1 이상인 젖은 경작지는 3점, 수분 0인 마른 경작지는 1점, 기타 블록은 0점이다.
-      같은 작물이 동서·남북 양 축에 모두 있거나 대각선에 있으면 $S$를 *한 번만*2로 나눈다. 한 번의 무작위 틱에서 생장 확률은 $display(1/(floor(25/S)+1))$이다.
+      같은 작물이 동서·남북 양 축에 모두 있거나 대각선에 있으면 $S$를 *한 번만*#context if print-mode.get() { h(0.2em) }2로 나눈다. 한 번의 무작위 틱에서 생장 확률은 $display(1/(floor(25/S)+1))$이다.
       #data-table((0.5fr, 0.6fr, 0.6fr, 0.6fr, 0.8fr, 0.8fr), header: ([작물], [젖음], [마름], [기타], [양 축], [대각]), rows: (
         ([A], [8], [0], [0], [있음], [있음]), ([B], [6], [2], [0], [없음], [없음]), ([C], [5], [0], [3], [있음], [없음]),
       ))
@@ -357,8 +361,9 @@
   ),
   (
     prompt: [서로 다른 네더 목표 블록 수와 그 블록들이 걸치는 청크 수를 차례로 나타낸 것은?],
+    print-justify: false,
     material: [
-      오버월드의 모든 정수 좌표 $(x,64,z)$ 중 $-255<=x<=-120$, $247<=z<=382$인 점을 변환한다. 수평 좌표의 오버월드→네더 배율은 1/8이며 Y는 그대로이다.
+      오버월드의 모든 정수 좌표 $(x,64,z)$ 중 #print-softbreak()#print-keep[$-255<=x<=-120$], #print-keep[$247<=z<=382$]인 점을 변환한다. 수평 좌표의 오버월드→네더 배율은 1/8이며 Y는 그대로이다.
       이 문항에서 변환 후 목표 블록은
       $ (floor(x/8),64,floor(z/8)) $
       으로 정한다. 청크의 수평 크기는 16×16 블록이므로 블록 $(a,b)$의 청크 좌표는 $(floor(a/16),floor(b/16))$이다. 음수도 아래쪽 정수로 내린다. 실제 포털 탐색·생성·연결은 수행하지 않고 목표 좌표 집합만 계산한다.
@@ -372,8 +377,9 @@
   ),
   (
     prompt: [모든 후보가 플레이어 거리 검사를 통과하도록 하는 정수 $h$의 개수는?],
+    print-justify: false,
     material: [
-      오버월드 좀비의 후보 발 좌표는 $(x+0.5, 64,z+0.5)$이며 $x,z$는 각각−32부터 32까지의 정수이다. 플레이어는 $(0.5,h,0.5)$에 있고 $64<=h<=192$이다. 가장 가까운 플레이어까지의 직선거리 $d$는
+      오버월드 좀비의 후보 발 좌표는 #print-softbreak()#print-keep[$(x+0.5, 64,z+0.5)$]이며 $x,z$는 각각−32부터 32까지의 정수이다. 플레이어는 #print-keep[$(0.5,h,0.5)$]에 있고 #print-keep[$64<=h<=192$]이다. 가장 가까운 플레이어까지의 직선거리 $d$는
       $ 24 < d <= 128 $
       이어야 한다. 블록광·하늘광은 0이며 다른 플레이어는 없고 월드 생성 지점은 충분히 멀다. 청크 활성·몹 수 제한·생물군계·바닥·충돌 등 다른 생성 조건은 모두 충족한다. 실제 생성 횟수 대신 거리 검사를 모두 통과하는 높이만 구한다.
     ],
@@ -396,9 +402,9 @@
 #assert(minecraft-questions.len() == 20 and minecraft-total-points == 50)
 #for item in minecraft-questions { assert(item.choices.len() == 5 and item.answer >= 1 and item.answer <= 5) }
 
-// The examination data above is shared by every paper size. A4 changes only
-// the option grid, whose shorter rows keep fractions and coordinates intact.
-#let minecraft-print-choice-columns = (3, 3, 3, 5, 5, 3, 3, 3, 3, 3, 3, 3, 2, 3, 3, 5, 3, 3, 3, 5)
+// The examination data above is shared by every paper size. Native A4 uses
+// compact numeric rows, while coordinates and fraction tuples remain wider.
+#let minecraft-print-choice-columns = (3, 3, 3, 5, 5, 5, 5, 5, 5, 3, 3, 5, 2, 3, 5, 5, 5, 5, 3, 5)
 
 #let minecraft-question(number, points: auto, print: false, columns: auto) = {
   let item = minecraft-questions.at(number - 1)
@@ -406,7 +412,7 @@
     else if print { minecraft-print-choice-columns.at(number - 1) }
     else { item.columns }
   question(number, item.prompt, points: if points == auto { minecraft-points.at(number - 1) } else { points }, body: [
-    #material(item.material)
+    #material(item.material, justify: if print { item.at("print-justify", default: auto) } else { auto })
     #if "view" in item { view(item.view) }
     #choices(..item.choices, columns: choice-columns)
   ])
@@ -423,14 +429,17 @@
   if number == 4 { final-notice() }
 }
 
-#let minecraft-paper(flow: "paged", gap: 1.6em) = {
+#let minecraft-paper(flow: "paged", gap: 1.2em) = {
   assert(("paged", "continuous").contains(flow), message: "kice-general: 문제 흐름은 paged 또는 continuous여야 합니다")
   if flow == "continuous" {
-    for number in range(1, minecraft-questions.len() + 1) {
-      if number > 1 { v(gap) }
-      minecraft-question(number, print: true)
-    }
-    final-notice()
+    let count = minecraft-questions.len()
+    let items = range(1, count + 1).map(number => {
+      let item = minecraft-question(number, print: true)
+      if number == count {
+        block(width: 100%, breakable: false, above: 0pt, below: 0pt)[#item#final-notice()]
+      } else { item }
+    })
+    spread-questions(items, gap: gap, balance: true)
   } else {
     for number in range(1, 5) {
       if number > 1 { colbreak() }

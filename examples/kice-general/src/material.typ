@@ -1,19 +1,20 @@
 #import "fonts.typ": fonts, font, sizes
-#import "inline.typ": as-content, as-blocks
+#import "inline.typ": as-content, as-blocks, print-prose
 #import "typography.typ": typography-profiles, print-typography-profiles, typography-state, typography-config, print-mode
 
 #let material-stroke = 0.36pt
 // General source material: serif body text inside a complete rectangle.
-#let material(body, title: none, font-config: fonts) = context {
+#let material(body, title: none, justify: auto, font-config: fonts) = context {
   let name = typography-state.get()
   let style = typography-config()
   let unit(value) = value * (text.size / style.body-size)
-  v(0.47348em)
+  v(if print-mode.get() { style.material-gap } else { 0.47348em })
   // Keep the outer offset in body ems; source text uses the central material role.
   pad(left: unit(style.outer-left), right: unit(style.outer-right), {
     set text(font: font("material", config: font-config), size: unit(style.material-size))
     set par(first-line-indent: (amount: style.first-indent / style.material-size / 0.95 * 1em, all: true),
-      justify: name == "korean", leading: style.material-leading, spacing: style.material-leading)
+      justify: if justify == auto { print-mode.get() or name == "korean" } else { justify },
+      leading: style.material-leading, spacing: style.material-leading)
     block(
       width: 100%,
       stroke: unit(material-stroke),
@@ -26,7 +27,7 @@
         align(center, text(font: font("label", config: font-config), as-content(title)))
         v(0.35em)
       }
-      #as-blocks(body)
+      #if print-mode.get() { print-prose(as-blocks(body)) } else { as-blocks(body) }
       #parbreak()
     ]
   })
@@ -41,7 +42,7 @@
   let inset-top = unit(style.view-top)
   set text(font: font("body", config: font-config))
   set par(first-line-indent: (amount: style.first-indent / style.body-size / 0.95 * 1em, all: true),
-    justify: name == "korean", leading: style.view-leading, spacing: style.view-leading)
+    justify: print-mode.get() or name == "korean", leading: style.view-leading, spacing: style.view-leading)
   v(0.99522em)
   pad(left: unit(style.outer-left), right: unit(style.outer-right), block(
     width: 100%,
@@ -62,7 +63,7 @@
       )))
       place(top + center, dy: -inset-top - measure(heading).height / 2, heading)
     }
-    #as-blocks(body)
+    #if print-mode.get() { print-prose(as-blocks(body)) } else { as-blocks(body) }
     #parbreak()
   ])
 }
@@ -94,7 +95,7 @@
   table(
     columns: columns,
     stroke: unit(0.36pt),
-    inset: (x: 0.45em, y: 0.35em),
+    inset: (x: 0.45em, y: if print-mode.get() { style.table-cell-y } else { 0.35em }),
     align: align,
     ..cells,
   )
@@ -109,19 +110,19 @@
     justify: true, leading: style.material-leading, spacing: style.material-leading)
   pad(right: unit(0.18pt), block(width: 100%, stroke: unit(material-stroke),
     inset: (x: unit(8.52pt), top: unit(style.material-top), bottom: unit(style.material-bottom)),
-    breakable: true, above: 0pt, below: 0pt)[#as-blocks(body)#parbreak()])
+    breakable: true, above: 0pt, below: 0pt)[#if print-mode.get() { print-prose(as-blocks(body)) } else { as-blocks(body) }#parbreak()])
 }
 
 // Each statement has its own hanging paragraph, including tall inline math.
 #let statements(..items) = context {
   let style = typography-config()
-  let indent = (if typography-state.get() == "math" { 19.32pt } else { 17.34pt }) / style.body-size * 1em
+  let indent = (if print-mode.get() { style.statement-indent } else if typography-state.get() == "math" { 19.32pt } else { 17.34pt }) / style.body-size * 1em
   let labels = ("ㄱ.", "ㄴ.", "ㄷ.", "ㄹ.", "ㅁ.")
   assert(items.pos().len() <= labels.len())
-  set par(first-line-indent: 0pt, hanging-indent: 0pt, justify: false, spacing: 0pt)
+  set par(first-line-indent: 0pt, hanging-indent: 0pt, justify: print-mode.get(), spacing: 0pt)
   for (index, item) in items.pos().enumerate() {
     if index > 0 { v(style.view-leading) }
-    pad(left: indent, [#h(-indent / 0.95)#box(width: indent / 0.95, labels.at(index))#as-content(item)#parbreak()])
+    pad(left: indent, [#h(-indent / 0.95)#box(width: indent / 0.95, labels.at(index))#if print-mode.get() { print-prose(as-content(item)) } else { as-content(item) }#parbreak()])
   }
 }
 
