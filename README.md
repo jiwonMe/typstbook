@@ -67,7 +67,8 @@ Any `*.stories.typ` file under the package root is a story file. One file can de
 | `description` | no | A short string shown under the title in the canvas header. |
 | `args` | no | Default control values. JSON-serializable only. |
 | `arg-types` | no | Override the inferred control. See below. |
-| `page` | no | Passed to `#set page(..)` for this story only. |
+| `page` | no | Passed to `#set page(..)` for this story only. The canvas viewport preset overrides this. A `set page` inside the story still wins over the preset, so put paper size here when you want the toolbar to change it. |
+| `checks` | no | Dictionary of assertions. `snapshot: true` (the default when `checks` is set) diffs SVG pages against `__snapshots__/`. `pages` is the expected page count. `width` and `height` are Typst lengths, compared to the first page. Run them from the Tests tab or with `typstbook test`. |
 
 `args` may be strings, numbers, booleans, hex colors (`#rgb` / `#rrggbb` / `#rrggbbaa`), and nested arrays or dictionaries. Content and markup controls are out of scope.
 
@@ -114,7 +115,10 @@ Optional package-root `preview.typ` wraps every extract and render with `#show: 
 - The `</>` toolbar button shows the story's `render:` source with the current control values substituted in, with a copy button. It updates live as you edit controls, with no recompile. Disabled when the source could not be isolated from the story file (see below).
 - Controls dock to the right or the bottom. On desktop, drag the sidebar or Controls boundary to resize it; each size is remembered separately. Focus a boundary and use arrow keys (Shift for larger steps), or double-click it to restore its default size.
 - **Fit width** and **Fit page** stay active as panels, the window, or story dimensions change. Fit page fits the first page. Manual zoom exits auto-fit; the selected fit mode is remembered across reloads. On narrow screens the buttons are labeled **Width** and **Page**.
-- Color mode is light, dark, or system. Typst SVG pages stay on white paper either way.
+- Color mode is light, dark, or system. Typst SVG pages stay on white paper either way. The canvas background (default, white, light, dark, checkerboard, or a custom hex) is separate from the page.
+- The viewport control recompiles the preview at Auto, A4, A5, Letter, Slide 16:9, or a custom width and height. Outline draws boxes around SVG shapes; Measure shows a crosshair and drag distance in millimetres. Zoom and scroll stay put across those updates.
+- The Controls tab lists colors, lengths, and fonts exported from the package entrypoint and from `tokens.typ` or `src/tokens.typ`.
+- The Tests tab runs each story's `checks` (and the snapshot diff) and shows pass or fail. `typstbook build` bakes the default-args results into the static site.
 - Saving a story file, `preview.typ`, or imported sources re-extracts and recompiles.
 - Each browser tab has its own selected story and control values -- open the same `dev` server in two tabs (or share a URL) and they don't interfere. The URL (`?path=...&args=...`) captures the exact state, so copying it reproduces what you're looking at for someone else on the same server.
 

@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { parseChecks } from "./checks.ts";
 import type { ArgType, ExtractResult, FileError, StoryIR } from "./types.ts";
 import { inferArgTypes, storyId, uniquifyStoryIds } from "./ir.ts";
 import { discoverStoryFiles } from "./discover.ts";
@@ -19,6 +20,7 @@ type RawStory = {
   args?: unknown;
   "arg-types"?: unknown;
   page?: unknown;
+  checks?: unknown;
   "has-render"?: unknown;
 };
 
@@ -116,6 +118,7 @@ export function storiesFromEvalJson(
       args,
       argTypes: inferArgTypes(args, asArgTypes(raw["arg-types"])),
       page: raw.page ?? null,
+      checks: parseChecks(raw.checks),
       source: null,
     });
   }

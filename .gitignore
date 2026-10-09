@@ -4,6 +4,7 @@ typstbook-static
 packages/server/helper
 packages/server/LICENSE
 .typst-packages
+.typstbook
 .DS_Store
 *.log
 .cursor

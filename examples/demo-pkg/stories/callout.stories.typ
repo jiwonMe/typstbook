@@ -9,6 +9,12 @@
     variant: (control: "select", options: ("info", "warning", "error")),
   ),
   page: (paper: "a6", margin: 12pt),
+  checks: (
+    snapshot: true,
+    pages: 1,
+    width: 105mm,
+    height: 148mm,
+  ),
   render: (args) => {
     callout(title: args.title, variant: args.variant)[본문은 스토리에 고정]
   },
@@ -22,6 +28,12 @@
     variant: (control: "select", options: ("info", "warning", "error")),
   ),
   page: (paper: "a6", margin: 12pt),
+  checks: (
+    snapshot: true,
+    pages: 1,
+    width: 105mm,
+    height: 148mm,
+  ),
   render: (args) => {
     callout(title: args.title, variant: args.variant)[A reusable callout.]
   },

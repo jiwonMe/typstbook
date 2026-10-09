@@ -20,6 +20,10 @@ const EXTRA = {
   search: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M10.5 5a5.5 5.5 0 0 1 4.4 8.8l3.9 3.9-1.1 1.1-3.9-3.9A5.5 5.5 0 1 1 10.5 5zm0 1.5a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg>`,
   "layout-right": `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 5h10v14H4z" opacity=".35"/><path d="M16 5h4v14h-4z"/></svg>`,
   "layout-bottom": `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h16v10H4z" opacity=".35"/><path d="M4 16h16v4H4z"/></svg>`,
+  viewport: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 6.5h6V5H4v7h1.5zM19 5h-7v1.5h6V12H19zM5 17.5V12H4v7h7v-1.5zM18.5 17.5H12V19h7v-7h-1.5z"/></svg>`,
+  background: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 5a7 7 0 1 0 0 14V5z" opacity=".35"/><path d="M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zm0 1.5v13a6.5 6.5 0 0 1 0-13z"/></svg>`,
+  measure: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 8h16v8H4zm1.5 1.5v2H7v-2zm3 0v5h1.5v-5zm3 0v2H13v-2zm3 0v5H16v-5z"/></svg>`,
+  outline: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h3v1.5H7.5V8H6zm9 0h3v3h-1.5V6.5H15zM6 16h1.5v1.5H9V19H6zm10.5 1.5V16H18v3h-3v-1.5zM11 8h2v8h-2z" opacity=".9"/></svg>`,
 } as const;
 
 const ICONS = {

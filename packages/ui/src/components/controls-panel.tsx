@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { ArgControl } from "@/components/arg-control";
 import { CodePanel } from "@/components/code-panel";
+import { TestsPanel } from "@/components/tests-panel";
+import { TokenBrowser } from "@/components/token-browser";
 import { Button } from "@/components/ui/button";
 import { UiIcon } from "@/components/ui/icon";
 import { Menu, MenuDivider, MenuItem } from "@/components/ui/menu";
@@ -10,10 +12,10 @@ import type { PdfDownloadResult } from "@/hooks/use-workbench";
 import { cn } from "@/lib/cn";
 import type { ControlsPlacement } from "@/lib/controls-placement";
 import { substituteArgs } from "@/lib/snippet";
-import { shortPath, type StoryIR } from "@/lib/types";
+import { shortPath, type PackageToken, type StoryCheckRun, type StoryIR } from "@/lib/types";
 import { type ColorMode } from "@/lib/theme";
 
-export type PanelTab = "controls" | "source" | "docs";
+export type PanelTab = "controls" | "source" | "docs" | "tests";
 
 type ControlsPanelProps = {
   selected: StoryIR | undefined;
@@ -27,6 +29,10 @@ type ControlsPanelProps = {
   onReset: () => void;
   onChange: (name: string, value: unknown) => void;
   onDownloadPdf: () => Promise<PdfDownloadResult>;
+  tokens: PackageToken[];
+  checks: StoryCheckRun[];
+  checksRunning: boolean;
+  onRunChecks: (storyId: string | null) => void;
 };
 
 const THEMES: { id: ColorMode; label: string }[] = [
@@ -47,6 +53,10 @@ export function ControlsPanel({
   onReset,
   onChange,
   onDownloadPdf,
+  tokens,
+  checks,
+  checksRunning,
+  onRunChecks,
 }: ControlsPanelProps) {
   const { colorMode, setColorMode } = useColorMode();
   const [resetVersion, setResetVersion] = useState(0);
@@ -110,7 +120,7 @@ export function ControlsPanel({
             {pdfBusy ? "Exporting" : "Export PDF"}
           </Button>
         </div>
-        <div className={cn(/* 탭과 배율 */ "flex h-6 items-center gap-1")}>
+        <div className={cn(/* 탭과 배율 */ "flex flex-wrap items-center gap-1")}>
           <Tabs
             label="Inspector"
             value={tab}
@@ -119,6 +129,7 @@ export function ControlsPanel({
               { id: "controls", label: "Controls" },
               { id: "source", label: "Source" },
               { id: "docs", label: "Docs" },
+              { id: "tests", label: "Tests" },
             ]}
           />
           <Menu
@@ -200,9 +211,18 @@ export function ControlsPanel({
             ) : (
               <p className={cn(/* 미선택 */ "px-4 py-6 text-ui text-[var(--color-text-secondary)]")}>Select a story to inspect its arguments.</p>
             )}
-            <DimRow label="Local variables" icon="adjust" />
-            <DimRow label="Local styles" icon="plus" />
+            <TokenBrowser tokens={tokens} />
           </>
+        ) : null}
+        {tab === "tests" ? (
+          <TestsPanel
+            selected={selected}
+            results={checks}
+            running={checksRunning}
+            readOnly={readOnly}
+            onRun={() => selected && onRunChecks(selected.id)}
+            onRunAll={() => onRunChecks(null)}
+          />
         ) : null}
         {tab === "source" ? (
           <div className={cn(/* 소스 여백 */ "p-2")}>
@@ -222,16 +242,3 @@ export function ControlsPanel({
   );
 }
 
-function DimRow({ label, icon }: { label: string; icon: "adjust" | "plus" }) {
-  return (
-    <div className={cn(
-      /* 접힌 섹션 */
-      "flex h-10 items-center border-t border-[var(--color-border)] pr-2 pl-4 text-[var(--color-text-secondary)]",
-    )}>
-      <span className={cn(/* 이름 */ "text-ui font-[550]")}>{label}</span>
-      <span className={cn(/* 트레일 아이콘 */ "ml-auto")}>
-        <UiIcon name={icon === "adjust" ? "variable-mode" : "plus-small"} />
-      </span>
-    </div>
-  );
-}

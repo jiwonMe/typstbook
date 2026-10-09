@@ -14,7 +14,7 @@ import { readZoomMode, type ZoomMode } from "@/lib/preview-fit";
 import { persistSidebarCollapsed, readStoredSidebarCollapsed } from "@/lib/sidebar";
 
 export function App() {
-  const { state, selectStory, setArg, setZoom, downloadPdf, readOnly } = useWorkbench();
+  const { state, selectStory, setArg, setZoom, setViewport, runChecks, downloadPdf, readOnly } = useWorkbench();
   const { placement, setPlacement } = useControlsPlacement();
   const { overlayOpen, isCompact, closeOverlay, toggleOverlay } = useSidebarOverlay();
   const [collapsed, setCollapsed] = useState(readStoredSidebarCollapsed);
@@ -108,6 +108,10 @@ export function App() {
               onZoom={setZoom}
               onControlsPlacement={setPlacement}
               onToggleSource={() => setPanelTab((tab) => tab === "source" ? "controls" : "source")}
+              viewportId={state.viewportId}
+              viewportSpec={state.viewport}
+              readOnly={readOnly}
+              onViewport={setViewport}
               leading={
                 <SidebarToggle
                   compact={isCompact}
@@ -138,6 +142,13 @@ export function App() {
               onReset={() => selected && selectStory(selected.id)}
               onChange={setArg}
               onDownloadPdf={downloadPdf}
+              tokens={state.tokens}
+              checks={state.checks}
+              checksRunning={state.checksRunning}
+              onRunChecks={(storyId) => {
+                setPanelTab("tests");
+                runChecks(storyId);
+              }}
             />
           }
         />

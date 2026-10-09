@@ -3,6 +3,7 @@
 
 #story(
   title: "Resume / Default",
+  page: (paper: "a5", margin: 16pt),
   args: (name: "홍길동", role: "Engineer"),
   render: (args) => {
     show: resume.with(name: args.name, role: args.role)

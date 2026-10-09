@@ -67,6 +67,22 @@ describe("storiesFromEvalJson", () => {
       JSON.stringify([{ title: "Info", "has-render": true }]),
     );
     assert.equal(stories[0]?.description, null);
+    assert.equal(stories[0]?.checks, null);
+  });
+
+  it("parses story checks", () => {
+    const { stories } = storiesFromEvalJson(
+      "stories/callout.stories.typ",
+      JSON.stringify([
+        {
+          title: "Warning",
+          checks: { snapshot: true, pages: 1, width: "105mm", height: "148mm" },
+          "has-render": true,
+        },
+      ]),
+    );
+    assert.equal(stories[0]?.checks?.pages, 1);
+    assert.equal(stories[0]?.checks?.width, "105mm");
   });
 });
 
@@ -91,5 +107,8 @@ describe("extractAllStories", () => {
       "stories/resume--resume-default",
       "stories/test--test",
     ]);
+    const warning = extracted.stories.find((story) => story.id === "stories/callout--warning");
+    assert.equal(warning?.checks?.pages, 1);
+    assert.ok(warning?.checks?.width?.endsWith("pt"));
   });
 });

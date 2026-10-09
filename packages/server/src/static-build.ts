@@ -1,8 +1,11 @@
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import { evaluateChecks } from "./checks.ts";
 import { extractAllStories } from "./extractor.ts";
 import { compileStory, compileStoryToPdf } from "./render.ts";
-import type { StaticSiteData, StaticStory } from "./types.ts";
+import { readSnapshotPages, snapshotDirFor } from "./snapshot.ts";
+import { discoverPackageTokens } from "./tokens.ts";
+import type { StaticSiteData, StaticStory, StoryCheckRun } from "./types.ts";
 
 export type StaticBuildOptions = {
   typst: string;
@@ -22,7 +25,9 @@ export async function buildStaticSite(
   }
 
   const extracted = await extractAllStories(options);
+  const tokens = await discoverPackageTokens(options.typst, options.packageRoot);
   const stories: StaticStory[] = [];
+  const checks: StoryCheckRun[] = [];
   for (const story of extracted.stories) {
     const request = {
       file: story.file,
@@ -40,8 +45,26 @@ export async function buildStaticSite(
       diagnostics: compiled.diagnostics,
       pdf: pdfResult.pdf ? pdfResult.pdf.toString("base64") : null,
     });
+    const expected =
+      compiled.pages.length > 0
+        ? await readSnapshotPages(snapshotDirFor(options.packageRoot, story.id))
+        : null;
+    const assertions = evaluateChecks({
+      checks: story.checks,
+      pages: compiled.pages,
+      diagnostics: compiled.diagnostics,
+      expected,
+    });
+    checks.push({
+      storyId: story.id,
+      file: story.file,
+      title: story.title,
+      status: assertions.every((item) => item.status === "pass") ? "pass" : "fail",
+      assertions,
+      diagnostics: compiled.diagnostics,
+    });
   }
-  const data: StaticSiteData = { stories, errors: extracted.errors };
+  const data: StaticSiteData = { stories, errors: extracted.errors, tokens, checks };
 
   await writeStaticSite(options.uiRoot, options.outDir, data);
   return data;

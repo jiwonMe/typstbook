@@ -8,12 +8,17 @@
   args: (:),
   arg-types: (:),
   page: none,
+  checks: none,
   render: none,
 ) = {
   assert(title != none, message: "typstbook: story title is required")
   assert(
     description == none or type(description) == str,
     message: "typstbook: story description must be a string",
+  )
+  assert(
+    checks == none or type(checks) == dictionary,
+    message: "typstbook: story checks must be a dictionary",
   )
   _stories.update(arr => {
     arr + ((
@@ -22,6 +27,7 @@
       args: args,
       arg-types: arg-types,
       page: page,
+      checks: checks,
       render: render,
     ),)
   })
@@ -35,12 +41,72 @@
       args: s.args,
       arg-types: s.arg-types,
       page: s.page,
+      checks: s.checks,
       has-render: s.render != none,
     )) <typstbook-story>]
   }
 }
 
-#let render-story(title, args) = context {
+/// Turn `"210mm"` from JSON into a length. Named fields such as `paper` stay strings.
+#let length-of(value) = {
+  if type(value) != str {
+    return value
+  }
+  let matched = value.match(regex("^([0-9]+(?:\.[0-9]+)?)(pt|mm|cm|in|em)$"))
+  if matched == none {
+    return value
+  }
+  let amount = float(matched.captures.at(0))
+  let unit = matched.captures.at(1)
+  if unit == "mm" { amount * 1mm }
+  else if unit == "cm" { amount * 1cm }
+  else if unit == "in" { amount * 1in }
+  else if unit == "em" { amount * 1em }
+  else { amount * 1pt }
+}
+
+#let coerce-viewport(viewport) = {
+  if viewport == none {
+    return none
+  }
+  let out = (:)
+  for key in viewport.keys() {
+    let value = viewport.at(key)
+    if key == "width" or key == "height" or key == "margin" {
+      out.insert(key, length-of(value))
+    } else {
+      out.insert(key, value)
+    }
+  }
+  out
+}
+
+/// Story `page` merged with a preview viewport. An explicit paper drops width/height, and a custom size drops `paper`.
+#let apply-viewport(spec, viewport) = {
+  let next = coerce-viewport(viewport)
+  if next == none {
+    spec
+  } else if spec == none {
+    next
+  } else {
+    let drop = if "paper" in next {
+      ("width", "height")
+    } else if "width" in next or "height" in next {
+      ("paper",)
+    } else {
+      ()
+    }
+    let base = (:)
+    for key in spec.keys() {
+      if key not in next and key not in drop {
+        base.insert(key, spec.at(key))
+      }
+    }
+    base + next
+  }
+}
+
+#let render-story(title, args, viewport: none) = context {
   let found = _stories.final().find(s => s.title == title)
   if found == none {
     panic("typstbook: story not found: " + title)
@@ -49,8 +115,9 @@
     panic("typstbook: story has no render: " + title)
   }
   let body = (found.render)(args)
-  if found.page != none {
-    page(..found.page, body)
+  let spec = apply-viewport(found.page, viewport)
+  if spec != none {
+    page(..spec, body)
   } else {
     body
   }
