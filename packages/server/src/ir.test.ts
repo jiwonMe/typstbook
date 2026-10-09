@@ -79,6 +79,7 @@ describe("uniquifyStoryIds", () => {
       args: {},
       argTypes: {},
       page: null,
+      checks: null,
       source: null,
     });
     const result = uniquifyStoryIds([

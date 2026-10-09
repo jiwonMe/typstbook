@@ -1,16 +1,13 @@
+#import "tokens.typ": code-fill, fonts, palette, role-color, space
+
 #let callout(title: "Note", variant: "info", body) = {
-  let colors = (
-    info: (border: rgb("#239DAD"), bg: rgb("#e7f6f8")),
-    warning: (border: rgb("#d97706"), bg: rgb("#fff7ed")),
-    error: (border: rgb("#dc2626"), bg: rgb("#fef2f2")),
-  )
-  let c = colors.at(variant)
+  let c = palette.at(variant)
   block(
     width: 100%,
-    inset: 12pt,
+    inset: space.inset,
     fill: c.bg,
-    stroke: (left: 3pt + c.border),
-    radius: 4pt,
+    stroke: (left: space.rule + c.border),
+    radius: space.radius,
   )[
     #strong(title)
     #parbreak()
@@ -19,12 +16,11 @@
 }
 
 #let resume(name: "Name", role: "Role", doc) = {
-  set page(paper: "a5", margin: 16pt)
-  set text(size: 11pt)
+  set text(size: space.body, font: fonts.body)
   align(center)[
-    #text(size: 20pt, weight: "bold")[#name]
+    #text(size: space.title, weight: "bold")[#name]
     #parbreak()
-    #text(fill: rgb("#555555"))[#role]
+    #text(fill: role-color)[#role]
   ]
   line(length: 100%)
   doc
@@ -33,9 +29,9 @@
 #let note-rule(doc) = {
   show raw.where(block: true): it => block(
     width: 100%,
-    fill: rgb("#f4f4f5"),
-    inset: 8pt,
-    radius: 4pt,
+    fill: code-fill,
+    inset: space.code,
+    radius: space.radius,
     it,
   )
   doc

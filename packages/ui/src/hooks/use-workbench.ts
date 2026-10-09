@@ -5,9 +5,13 @@ import {
   mergeStoryArgs,
   type ClientMessage,
   type FileError,
+  type PackageToken,
   type ServerMessage,
+  type StoryCheckRun,
   type StoryIR,
+  type ViewportSpec,
 } from "@/lib/types";
+import { readStoredViewport, viewportStorageKey, type ViewportId } from "@/lib/viewport";
 
 export type PdfDownloadResult = { ok: true } | { ok: false; diagnostics: string[] };
 
@@ -23,6 +27,11 @@ export type WorkbenchState = {
   zoom: number;
   pageIndex: number;
   connected: boolean;
+  tokens: PackageToken[];
+  checks: StoryCheckRun[];
+  checksRunning: boolean;
+  viewportId: ViewportId;
+  viewport: ViewportSpec | null;
 };
 
 type StaticStory = StoryIR & {
@@ -30,7 +39,12 @@ type StaticStory = StoryIR & {
   diagnostics: string[];
   pdf: string | null;
 };
-type StaticSiteData = { stories: StaticStory[]; errors: FileError[] };
+type StaticSiteData = {
+  stories: StaticStory[];
+  errors: FileError[];
+  tokens?: PackageToken[];
+  checks?: StoryCheckRun[];
+};
 
 declare global {
   interface Window {
@@ -98,8 +112,14 @@ function initialState(): WorkbenchState {
       zoom: 1,
       pageIndex: 0,
       connected: true,
+      tokens: STATIC_DATA.tokens ?? [],
+      checks: STATIC_DATA.checks ?? [],
+      checksRunning: false,
+      viewportId: "auto",
+      viewport: null,
     };
   }
+  const storedViewport = readStoredViewport();
   return {
     stories: [],
     errors: [],
@@ -112,6 +132,11 @@ function initialState(): WorkbenchState {
     zoom: 1,
     pageIndex: 0,
     connected: false,
+    tokens: [],
+    checks: [],
+    checksRunning: false,
+    viewportId: storedViewport.id,
+    viewport: storedViewport.spec,
   };
 }
 
@@ -234,6 +259,32 @@ export function useWorkbench() {
     }
   }, []);
 
+  const setViewport = useCallback(
+    (id: ViewportId, spec: ViewportSpec | null) => {
+      try {
+        localStorage.setItem(viewportStorageKey(), JSON.stringify({ id, spec }));
+      } catch {
+        // Optional preference.
+      }
+      setState((prev) => ({ ...prev, viewportId: id, viewport: spec }));
+      if (!STATIC_DATA) {
+        send({ type: "set-viewport", viewport: spec });
+      }
+    },
+    [send],
+  );
+
+  const runChecks = useCallback(
+    (storyId: string | null) => {
+      if (STATIC_DATA) {
+        return;
+      }
+      setState((prev) => ({ ...prev, checksRunning: true }));
+      send({ type: "run-checks", storyId });
+    },
+    [send],
+  );
+
   const setZoom = useCallback((zoom: number) => {
     setState((prev) => ({
       ...prev,
@@ -298,12 +349,16 @@ export function useWorkbench() {
                 queueMicrotask(() => {
                   if (!cancelled) {
                     send({ type: "select", storyId: first.id });
+                    if (stateRef.current.viewport) {
+                      send({ type: "set-viewport", viewport: stateRef.current.viewport });
+                    }
                   }
                 });
                 return {
                   ...prev,
                   stories,
                   errors,
+                  tokens: message.tokens ?? prev.tokens,
                   selectedId: first.id,
                   args: { ...first.args },
                   pageIndex: 0,
@@ -313,6 +368,7 @@ export function useWorkbench() {
                 ...prev,
                 stories,
                 errors,
+                tokens: message.tokens ?? prev.tokens,
                 selectedId: null,
                 args: {},
               };
@@ -322,7 +378,7 @@ export function useWorkbench() {
               (story) => story.id === prev.selectedId,
             );
             if (!current || !prev.selectedId) {
-              return { ...prev, stories, errors };
+              return { ...prev, stories, errors, tokens: message.tokens ?? prev.tokens };
             }
 
             const args = mergeStoryArgs(current.args, prev.args);
@@ -350,13 +406,16 @@ export function useWorkbench() {
                   if (!argsEqual(args, current.args)) {
                     send({ type: "set-args", storyId, args });
                   }
+                  if (stateRef.current.viewport) {
+                    send({ type: "set-viewport", viewport: stateRef.current.viewport });
+                  }
                 } else if (argKeysChanged) {
                   send({ type: "set-args", storyId, args });
                 }
               });
             }
 
-            return { ...prev, stories, errors, args };
+            return { ...prev, stories, errors, args, tokens: message.tokens ?? prev.tokens };
           });
           break;
         }
@@ -402,6 +461,13 @@ export function useWorkbench() {
             };
           });
           break;
+        case "check-results":
+          setState((prev) => ({
+            ...prev,
+            checks: message.results,
+            checksRunning: false,
+          }));
+          break;
         default: {
           const _exhaustive: never = message;
           return _exhaustive;
@@ -424,6 +490,8 @@ export function useWorkbench() {
     setArg,
     setZoom,
     setPageIndex,
+    setViewport,
+    runChecks,
     downloadPdf,
     readOnly: Boolean(STATIC_DATA),
   };

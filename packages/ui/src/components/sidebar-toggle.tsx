@@ -1,33 +1,32 @@
-import { MenuOutline18 } from "@/components/icons/MenuOutline18";
-import { Box, Icon } from "@seed-design/react";
-import { useSideNavigationContext } from "@seed-design/react/primitive";
-import { ActionButton } from "seed-design/ui/action-button";
+import { IconButton } from "@/components/ui/button";
+import { UiIcon } from "@/components/ui/icon";
+import { cn } from "@/lib/cn";
 
 type SidebarToggleProps = {
   compact: boolean;
   collapsed: boolean;
   overlayOpen: boolean;
+  onExpand: () => void;
   onToggle: () => void;
 };
 
-export function SidebarToggle({ compact, collapsed, overlayOpen, onToggle }: SidebarToggleProps) {
-  const { setCollapsed } = useSideNavigationContext();
+export function SidebarToggle({ compact, collapsed, overlayOpen, onExpand, onToggle }: SidebarToggleProps) {
+  const visible = compact || collapsed;
+  if (!visible) return null;
   const expanded = compact ? overlayOpen : !collapsed;
   return (
-    <Box className="typstbook-sidebar-toggle" data-collapsed={collapsed} flexShrink={0}>
-      <ActionButton
-        variant={overlayOpen ? "neutralWeak" : "ghost"}
-        size="xsmall"
-        layout={compact ? "iconOnly" : undefined}
-        aria-label={expanded ? "Hide stories" : "Show stories"}
-        title={expanded ? "Hide stories" : "Show stories"}
+    <div data-print-hide className={cn(/* 접힌 사이드바를 다시 연다 */ "absolute top-3 left-3 z-20")}>
+      <IconButton
+        data-sidebar-reopen
+        size={32}
+        label={expanded ? "Hide stories" : "Show stories"}
+        pressed={overlayOpen}
         aria-expanded={expanded}
         aria-controls="typstbook-stories"
-        onClick={compact ? onToggle : () => setCollapsed(false)}
+        onClick={compact ? onToggle : onExpand}
       >
-        <Icon svg={<MenuOutline18 />} />
-        {!compact && "Stories"}
-      </ActionButton>
-    </Box>
+        <UiIcon name="sidebar-open" />
+      </IconButton>
+    </div>
   );
 }

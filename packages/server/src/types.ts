@@ -8,6 +8,18 @@ export type ArgType = {
   step?: number;
 };
 
+/** JSON-serializable checks declared on `#story(checks: ...)`. */
+export type StoryChecks = {
+  /** Compare the default-args render to the committed SVG snapshot. */
+  snapshot: boolean;
+  /** Expected page count, or null when the story does not assert one. */
+  pages: number | null;
+  /** Expected first-page width, such as `105mm`, or null. */
+  width: string | null;
+  /** Expected first-page height, or null. */
+  height: string | null;
+};
+
 export type StoryIR = {
   id: string;
   file: string;
@@ -16,8 +28,45 @@ export type StoryIR = {
   args: Record<string, unknown>;
   argTypes: Record<string, ArgType>;
   page: unknown;
+  checks: StoryChecks | null;
   /** Verbatim `render:` source (falls back to the whole `#story(...)` call), or null if it could not be isolated. */
   source: string | null;
+};
+
+export type TokenKind = "color" | "length" | "font" | "number" | "string" | "boolean";
+
+export type PackageToken = {
+  /** Dotted path inside the module, such as `palette.warning.border`. */
+  name: string;
+  kind: TokenKind;
+  /** Typst's JSON representation (`rgb("#d97706")`, `12pt`, a font name, …). */
+  value: string;
+  /** Package-relative module that exported the binding. */
+  module: string;
+};
+
+/** Preview page override. `paper` is a Typst paper name; width/height are length strings. */
+export type ViewportSpec = {
+  paper?: string;
+  width?: string;
+  height?: string;
+};
+
+export type AssertionStatus = "pass" | "fail";
+
+export type AssertionResult = {
+  name: string;
+  status: AssertionStatus;
+  detail: string;
+};
+
+export type StoryCheckRun = {
+  storyId: string;
+  file: string;
+  title: string;
+  status: "pass" | "fail";
+  assertions: AssertionResult[];
+  diagnostics: string[];
 };
 
 export type FileError = {
@@ -35,6 +84,8 @@ export type CompileRequest = {
   title: string;
   args: Record<string, unknown>;
   page: unknown;
+  /** Preview-only page override. Omitted for snapshot checks and PDF export. */
+  viewport?: ViewportSpec | null;
 };
 
 export type CompileResult = {
@@ -43,18 +94,21 @@ export type CompileResult = {
 };
 
 export type ServerMessage =
-  | { type: "stories"; stories: StoryIR[]; errors: FileError[] }
+  | { type: "stories"; stories: StoryIR[]; errors: FileError[]; tokens: PackageToken[] }
   | { type: "preview"; storyId: string; pages: string[]; diagnostics: string[] }
   | {
       type: "preview-error";
       storyId: string;
       diagnostics: string[];
       lastGoodPages: string[];
-    };
+    }
+  | { type: "check-results"; results: StoryCheckRun[] };
 
 export type ClientMessage =
   | { type: "select"; storyId: string }
-  | { type: "set-args"; storyId: string; args: Record<string, unknown> };
+  | { type: "set-args"; storyId: string; args: Record<string, unknown> }
+  | { type: "set-viewport"; viewport: ViewportSpec | null }
+  | { type: "run-checks"; storyId: string | null };
 
 export type InvalidateReason = "args" | "story-file" | "source" | "config";
 
@@ -88,4 +142,7 @@ export type StaticStory = StoryIR & {
 export type StaticSiteData = {
   stories: StaticStory[];
   errors: FileError[];
+  tokens: PackageToken[];
+  /** Checks evaluated against default args at build time. */
+  checks: StoryCheckRun[];
 };

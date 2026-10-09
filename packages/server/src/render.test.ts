@@ -65,6 +65,31 @@ describe("compileStory", () => {
     assert.match(compiled.pages[0] ?? "", /<svg/i);
   });
 
+  it("overrides the story page with a preview viewport", async (t) => {
+    const typst = findTypstBinary();
+    if (!typst) {
+      t.skip("typst is not on PATH");
+      return;
+    }
+    const compiled = await compileStory(
+      {
+        typst,
+        packageRoot: demoRoot,
+        packagePath: await ensureHelperPackagePath(),
+      },
+      {
+        file: "stories/callout.stories.typ",
+        title: "Warning",
+        args: { title: "주의", variant: "warning" },
+        page: { paper: "a6", margin: "12pt" },
+        viewport: { paper: "a4" },
+      },
+    );
+    assert.equal(compiled.pages.length, 1, compiled.diagnostics.join("\n"));
+    const size = svgSize(compiled.pages[0] ?? "");
+    assert.ok(Math.abs(size.width - 595.28) < 1, `expected A4 width, got ${size.width}`);
+  });
+
   it("applies the story page paper size to compiled SVG", async (t) => {
     const typst = findTypstBinary();
     if (!typst) {
@@ -121,30 +146,31 @@ describe("compileStory", () => {
     assert.ok(height > 595 && height < 596, `expected A5 height, got ${height}`);
   });
 
-  it("lets a template set page win when the story has no page", async (t) => {
+  it("lets a preview viewport override the story page", async (t) => {
     const typst = findTypstBinary();
     if (!typst) {
       t.skip("typst is not on PATH");
       return;
     }
-    const compiled = await compileStory(
-      {
-        typst,
-        packageRoot: demoRoot,
-        packagePath: await ensureHelperPackagePath(),
-      },
-      {
-        file: "stories/resume.stories.typ",
-        title: "Resume / Default",
-        args: { name: "홍길동", role: "Engineer" },
-        page: null,
-      },
-    );
+    const options = {
+      typst,
+      packageRoot: demoRoot,
+      packagePath: await ensureHelperPackagePath(),
+    };
+    const request = {
+      file: "stories/resume.stories.typ",
+      title: "Resume / Default",
+      args: { name: "홍길동", role: "Engineer" },
+      page: { paper: "a5", margin: "16pt" },
+    };
+    const compiled = await compileStory(options, request);
     assert.equal(compiled.pages.length, 1, compiled.diagnostics.join("\n"));
-    const { width, height } = svgSize(compiled.pages[0] ?? "");
-    // resume() sets paper: "a5"
-    assert.ok(width > 419 && width < 420, `expected A5 width, got ${width}`);
-    assert.ok(height > 595 && height < 596, `expected A5 height, got ${height}`);
+    const base = svgSize(compiled.pages[0] ?? "");
+    assert.ok(base.width > 419 && base.width < 420, `expected A5 width, got ${base.width}`);
+    const overridden = await compileStory(options, { ...request, viewport: { paper: "a4" } });
+    assert.equal(overridden.pages.length, 1, overridden.diagnostics.join("\n"));
+    const next = svgSize(overridden.pages[0] ?? "");
+    assert.ok(Math.abs(next.width - 595.28) < 1, `expected A4 width, got ${next.width}`);
   });
 });
 

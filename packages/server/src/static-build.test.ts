@@ -32,7 +32,7 @@ async function makeFakeUiRoot(): Promise<string> {
   return dir;
 }
 
-const emptyData: StaticSiteData = { stories: [], errors: [] };
+const emptyData: StaticSiteData = { stories: [], errors: [], tokens: [], checks: [] };
 
 describe("writeStaticSite", () => {
   it("copies UI assets and injects the data bootstrap script", async () => {
@@ -49,6 +49,7 @@ describe("writeStaticSite", () => {
           args: { title: "hi" },
           argTypes: { title: { control: "text" } },
           page: null,
+          checks: null,
           source: null,
           pages: ["<svg>ok</svg>"],
           diagnostics: [],
@@ -56,6 +57,8 @@ describe("writeStaticSite", () => {
         },
       ],
       errors: [],
+      tokens: [],
+      checks: [],
     };
     try {
       await writeStaticSite(uiRoot, outDir, data);
@@ -81,6 +84,8 @@ describe("writeStaticSite", () => {
       errors: [
         { file: "x.stories.typ", message: "</script><script>alert(1)</script>" },
       ],
+      tokens: [],
+      checks: [],
     };
     try {
       await writeStaticSite(uiRoot, outDir, data);

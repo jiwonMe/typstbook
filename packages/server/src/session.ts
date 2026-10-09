@@ -2,19 +2,24 @@ import { watch } from "chokidar";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { extname, join, relative, resolve } from "node:path";
 import { WebSocketServer, type WebSocket } from "ws";
+import { runPackageChecks } from "./checks.ts";
 import { extractAllStories, extractStoryFile } from "./extractor.ts";
 import { invalidateFor } from "./invalidate.ts";
-import { compileStory, compileStoryToPdf } from "./render.ts";
+import { compileStoryToPdf, watchWrapperSource } from "./render.ts";
+import { discoverPackageTokens } from "./tokens.ts";
+import { TypstPreviewWatch } from "./watch-preview.ts";
 import type {
   ClientMessage,
   CompileRequest,
   FileError,
+  PackageToken,
   ServerMessage,
   StoryIR,
+  ViewportSpec,
 } from "./types.ts";
 import { isStoryFile, mergeStoryArgs, titleSlug, toPosix } from "./ir.ts";
 import { isBuiltUi, resolveUiRoot } from "./paths.ts";
-import { isPreviewPath } from "./preview.ts";
+import { hasPreviewFile, isPreviewPath } from "./preview.ts";
 import { serveStatic } from "./static.ts";
 import { ensureHelperPackagePath, requireTypstBinary } from "./typst.ts";
 
@@ -42,8 +47,12 @@ type ClientSession = {
   selectedId: string | null;
   readonly argsById: Map<string, Record<string, unknown>>;
   readonly lastGoodPages: Map<string, string[]>;
+  viewport: ViewportSpec | null;
+  preview: TypstPreviewWatch | null;
+  watchStoryId: string | null;
   compiling: boolean;
   compileQueued: boolean;
+  compileRefresh: boolean;
   compileTimer: ReturnType<typeof setTimeout> | null;
 };
 
@@ -53,8 +62,12 @@ function createSession(socket: WebSocket): ClientSession {
     selectedId: null,
     argsById: new Map(),
     lastGoodPages: new Map(),
+    viewport: null,
+    preview: null,
+    watchStoryId: null,
     compiling: false,
     compileQueued: false,
+    compileRefresh: false,
     compileTimer: null,
   };
 }
@@ -71,6 +84,7 @@ export class Workbench {
   private packagePath = "";
   private stories: StoryIR[] = [];
   private errors: FileError[] = [];
+  private tokens: PackageToken[] = [];
   private readonly sessions = new Map<WebSocket, ClientSession>();
   private httpServer: ReturnType<typeof createServer> | null = null;
   private wss: WebSocketServer | null = null;
@@ -138,6 +152,7 @@ export class Workbench {
         type: "stories",
         stories: this.stories,
         errors: this.errors,
+        tokens: this.tokens,
       });
       socket.on("message", (data) => {
         this.onClientMessage(session, String(data));
@@ -146,6 +161,7 @@ export class Workbench {
         if (session.compileTimer) {
           clearTimeout(session.compileTimer);
         }
+        void session.preview?.stop();
         this.sessions.delete(socket);
       });
     });
@@ -197,6 +213,10 @@ export class Workbench {
   async stop(): Promise<void> {
     await this.watcher?.close();
     for (const session of this.sessions.values()) {
+      if (session.compileTimer) {
+        clearTimeout(session.compileTimer);
+      }
+      await session.preview?.stop();
       session.socket.terminate();
     }
     this.sessions.clear();
@@ -216,7 +236,9 @@ export class Workbench {
       ignored: (path) =>
         path.includes("node_modules") ||
         path.includes(`${join(this.packageRoot, ".git")}`) ||
-        path.includes("/.git/"),
+        path.includes("/.git/") ||
+        path.includes(`${join(this.packageRoot, ".typstbook")}`) ||
+        path.includes("/.typstbook/"),
     });
     this.watcher = watcher;
 
@@ -254,15 +276,15 @@ export class Workbench {
     const action = invalidateFor(reason);
     switch (action) {
       case "compile":
-        this.scheduleCompileAll();
+        this.scheduleCompileAll(true);
         break;
       case "extract-file":
         await this.reloadFile(file);
-        this.scheduleCompileAll();
+        this.scheduleCompileAll(true);
         break;
       case "extract-all":
         await this.reloadAll();
-        this.scheduleCompileAll();
+        this.scheduleCompileAll(true);
         break;
       default: {
         const _exhaustive: never = action;
@@ -298,6 +320,13 @@ export class Workbench {
           this.scheduleCompile(session);
         }
         break;
+      case "set-viewport":
+        session.viewport = message.viewport;
+        this.scheduleCompile(session);
+        break;
+      case "run-checks":
+        void this.runChecks(session, message.storyId);
+        break;
       default: {
         const _exhaustive: never = message;
         return _exhaustive;
@@ -313,11 +342,13 @@ export class Workbench {
     });
     this.stories = extracted.stories;
     this.errors = extracted.errors;
+    this.tokens = await discoverPackageTokens(this.typst, this.packageRoot);
     this.syncAllSessions();
     this.broadcast({
       type: "stories",
       stories: this.stories,
       errors: this.errors,
+      tokens: this.tokens,
     });
   }
 
@@ -347,6 +378,7 @@ export class Workbench {
       type: "stories",
       stories: this.stories,
       errors: this.errors,
+      tokens: this.tokens,
     });
   }
 
@@ -375,28 +407,73 @@ export class Workbench {
     }
   }
 
-  private scheduleCompileAll(): void {
+  private scheduleCompileAll(refresh = false): void {
     for (const session of this.sessions.values()) {
-      this.scheduleCompile(session);
+      this.scheduleCompile(session, refresh);
     }
   }
 
-  private scheduleCompile(session: ClientSession): void {
+  private scheduleCompile(session: ClientSession, refresh = false): void {
     if (session.compileTimer) {
       clearTimeout(session.compileTimer);
     }
+    session.compileRefresh = refresh;
     session.compileTimer = setTimeout(() => {
       session.compileTimer = null;
-      void this.compileSelected(session);
+      const queuedRefresh = session.compileRefresh;
+      session.compileRefresh = false;
+      void this.compileSelected(session, queuedRefresh);
     }, COMPILE_DEBOUNCE_MS);
   }
 
-  private async compileSelected(session: ClientSession): Promise<void> {
+  private previewFor(session: ClientSession): TypstPreviewWatch {
+    if (!session.preview) {
+      const preview = new TypstPreviewWatch({
+        typst: this.typst,
+        packageRoot: this.packageRoot,
+        packagePath: this.packagePath,
+      });
+      preview.onUpdate = (result) => {
+        this.publishPreview(session, result);
+      };
+      session.preview = preview;
+    }
+    return session.preview;
+  }
+
+  private publishPreview(
+    session: ClientSession,
+    result: { pages: string[]; diagnostics: string[] },
+  ): void {
+    const storyId = session.watchStoryId;
+    if (!storyId) {
+      return;
+    }
+    if (result.pages.length === 0) {
+      this.send(session.socket, {
+        type: "preview-error",
+        storyId,
+        diagnostics: result.diagnostics,
+        lastGoodPages: session.lastGoodPages.get(storyId) ?? [],
+      });
+      return;
+    }
+    session.lastGoodPages.set(storyId, result.pages);
+    this.send(session.socket, {
+      type: "preview",
+      storyId,
+      pages: result.pages,
+      diagnostics: result.diagnostics,
+    });
+  }
+
+  private async compileSelected(session: ClientSession, refresh = false): Promise<void> {
     if (!session.selectedId) {
       return;
     }
     if (session.compiling) {
       session.compileQueued = true;
+      session.compileRefresh = session.compileRefresh || refresh;
       return;
     }
     session.compiling = true;
@@ -414,42 +491,60 @@ export class Workbench {
       }
       const args = mergeStoryArgs(story.args, session.argsById.get(storyId));
       session.argsById.set(storyId, args);
-      const compiled = await compileStory(
-        {
-          typst: this.typst,
-          packageRoot: this.packageRoot,
-          packagePath: this.packagePath,
-        },
-        {
-          file: story.file,
-          title: story.title,
-          args,
-          page: story.page,
-        },
+      session.watchStoryId = storyId;
+      const source = watchWrapperSource(
+        toPosix(story.file),
+        story.title,
+        args,
+        session.viewport,
+        await hasPreviewFile(this.packageRoot),
       );
-      if (compiled.pages.length === 0) {
-        this.send(session.socket, {
-          type: "preview-error",
-          storyId,
-          diagnostics: compiled.diagnostics,
-          lastGoodPages: session.lastGoodPages.get(storyId) ?? [],
-        });
-        return;
+      const preview = this.previewFor(session);
+      if (refresh && preview.matches(source)) {
+        await preview.nudge();
+      } else {
+        await preview.push(source);
       }
-      session.lastGoodPages.set(storyId, compiled.pages);
-      this.send(session.socket, {
-        type: "preview",
-        storyId,
-        pages: compiled.pages,
-        diagnostics: compiled.diagnostics,
-      });
     } finally {
       session.compiling = false;
       if (session.compileQueued) {
+        const queuedRefresh = session.compileRefresh;
         session.compileQueued = false;
-        void this.compileSelected(session);
+        session.compileRefresh = false;
+        void this.compileSelected(session, queuedRefresh);
       }
     }
+  }
+
+  private async runChecks(session: ClientSession, storyId: string | null): Promise<void> {
+    const options = {
+      typst: this.typst,
+      packageRoot: this.packageRoot,
+      packagePath: this.packagePath,
+    };
+    if (storyId && !this.stories.some((story) => story.id === storyId)) {
+      this.send(session.socket, {
+        type: "check-results",
+        results: [
+          {
+            storyId,
+            file: "",
+            title: storyId,
+            status: "fail",
+            assertions: [
+              { name: "Story", status: "fail", detail: `Unknown story: ${storyId}` },
+            ],
+            diagnostics: [],
+          },
+        ],
+      });
+      return;
+    }
+    const stories = storyId
+      ? this.stories.filter((story) => story.id === storyId)
+      : this.stories;
+    const results = await runPackageChecks(options, stories);
+    this.send(session.socket, { type: "check-results", results });
   }
 
   private broadcast(message: ServerMessage): void {

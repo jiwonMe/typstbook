@@ -12,13 +12,14 @@
       (function () {
         try {
           var stored = localStorage.getItem("typstbook-color-mode");
-          if (
-            stored === "light-only" ||
-            stored === "dark-only" ||
-            stored === "system"
-          ) {
-            document.documentElement.dataset.seedColorMode = stored;
-          }
+          var mode =
+            stored === "light-only" || stored === "dark-only" || stored === "system"
+              ? stored
+              : "system";
+          if (stored === mode) document.documentElement.dataset.seedColorMode = stored;
+          var systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+          document.documentElement.dataset.theme =
+            mode === "dark-only" || (mode === "system" && systemDark) ? "dark" : "light";
         } catch (e) {}
       })();
     </script>

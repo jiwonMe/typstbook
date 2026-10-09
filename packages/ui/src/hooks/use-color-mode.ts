@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import {
+  applyColorMode,
   persistColorMode,
   readColorMode,
   type ColorMode,
@@ -17,7 +18,15 @@ export function useColorMode() {
       attributes: true,
       attributeFilter: ["data-seed-color-mode"],
     });
-    return () => observer.disconnect();
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const syncSystem = () => {
+      if (readColorMode() === "system") applyColorMode("system");
+    };
+    media.addEventListener("change", syncSystem);
+    return () => {
+      observer.disconnect();
+      media.removeEventListener("change", syncSystem);
+    };
   }, []);
 
   const setColorMode = useCallback((mode: ColorMode) => {

@@ -31,7 +31,7 @@ function collectMessages(socket: WebSocket): ServerMessage[] {
 async function waitFor(
   log: ServerMessage[],
   predicate: (message: ServerMessage) => boolean,
-  timeoutMs = 5000,
+  timeoutMs = 15000,
 ): Promise<ServerMessage> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {

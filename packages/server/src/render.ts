@@ -1,9 +1,9 @@
-import { mkdir, mkdtemp, readdir, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import type { CompileRequest, CompileResult } from "./types.ts";
+import type { CompileRequest, CompileResult, ViewportSpec } from "./types.ts";
 import { diagnosticsFromStderr, HELPER_PACKAGE_SPEC, runTypst } from "./typst.ts";
-import { titleSlug, toPosix } from "./ir.ts";
+import { toPosix } from "./ir.ts";
 import { hasPreviewFile, previewSetupSource } from "./preview.ts";
 
 export type RenderOptions = {
@@ -19,60 +19,84 @@ export function renderWrapperSource(
   return `#import "${HELPER_PACKAGE_SPEC}": render-story, decode-args
 ${previewSetupSource(includePreview)}#include "/${storyFilePosix}"
 #let args = decode-args(sys.inputs.at("args"))
-#render-story(sys.inputs.at("title"), args)
+#let viewport = if "viewport" in sys.inputs { decode-args(sys.inputs.at("viewport")) } else { none }
+#render-story(sys.inputs.at("title"), args, viewport: viewport)
 `;
 }
 
-function outputDirFor(file: string, title: string): string {
-  const safe = `${toPosix(file).replaceAll("/", "__")}--${titleSlug(title)}`;
-  return join(tmpdir(), "typstbook-render", safe);
+/** Wrapper whose args and viewport live in the file, so `typst watch` can recompile them. */
+export function watchWrapperSource(
+  storyFilePosix: string,
+  title: string,
+  args: Record<string, unknown>,
+  viewport: ViewportSpec | null,
+  includePreview = false,
+): string {
+  const argsLiteral = `json(bytes(${JSON.stringify(JSON.stringify(args))}))`;
+  const viewportLiteral = viewport
+    ? `json(bytes(${JSON.stringify(JSON.stringify(viewport))}))`
+    : "none";
+  return `#import "${HELPER_PACKAGE_SPEC}": render-story
+${previewSetupSource(includePreview)}#include "/${storyFilePosix}"
+#let args = ${argsLiteral}
+#let viewport = ${viewportLiteral}
+#render-story(${JSON.stringify(title)}, args, viewport: viewport)
+`;
 }
 
 export async function compileStory(
   options: RenderOptions,
   request: CompileRequest,
 ): Promise<CompileResult> {
-  const outDir = outputDirFor(request.file, request.title);
-  await rm(outDir, { recursive: true, force: true });
-  await mkdir(outDir, { recursive: true });
-  const output = join(outDir, "page-{p}.svg");
-  const includePreview = await hasPreviewFile(options.packageRoot);
+  // A fresh directory per call. A path derived from file+title races when
+  // two compiles of the same story overlap (static build vs. a live session,
+  // or test files running in parallel): one `rm` deletes the other's SVGs.
+  const outDir = await mkdtemp(join(tmpdir(), "typstbook-render-"));
+  try {
+    const output = join(outDir, "page-{p}.svg");
+    const includePreview = await hasPreviewFile(options.packageRoot);
 
-  const result = await runTypst(
-    options.typst,
-    [
-      "compile",
-      "--root",
-      options.packageRoot,
-      "--package-path",
-      options.packagePath,
-      "--input",
-      `args=${JSON.stringify(request.args)}`,
-      "--input",
-      `title=${request.title}`,
-      "-",
-      output,
-    ],
-    renderWrapperSource(toPosix(request.file), includePreview),
-  );
+    const result = await runTypst(
+      options.typst,
+      [
+        "compile",
+        "--root",
+        options.packageRoot,
+        "--package-path",
+        options.packagePath,
+        "--input",
+        `args=${JSON.stringify(request.args)}`,
+        "--input",
+        `title=${request.title}`,
+        ...(request.viewport
+          ? ["--input", `viewport=${JSON.stringify(request.viewport)}`]
+          : []),
+        "-",
+        output,
+      ],
+      renderWrapperSource(toPosix(request.file), includePreview),
+    );
 
-  if (result.code !== 0) {
+    if (result.code !== 0) {
+      return {
+        pages: [],
+        diagnostics: diagnosticsFromStderr(result.stderr),
+      };
+    }
+
+    const names = (await readdir(outDir))
+      .filter((name) => name.endsWith(".svg"))
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+    const pages = await Promise.all(
+      names.map((name) => readFile(join(outDir, name), "utf8")),
+    );
     return {
-      pages: [],
+      pages,
       diagnostics: diagnosticsFromStderr(result.stderr),
     };
+  } finally {
+    await rm(outDir, { recursive: true, force: true });
   }
-
-  const names = (await readdir(outDir))
-    .filter((name) => name.endsWith(".svg"))
-    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-  const pages = await Promise.all(
-    names.map((name) => readFile(join(outDir, name), "utf8")),
-  );
-  return {
-    pages,
-    diagnostics: diagnosticsFromStderr(result.stderr),
-  };
 }
 
 export type PdfResult = {
