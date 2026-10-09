@@ -1,219 +1,237 @@
-import { Badge, Box, HStack, Text, VStack } from "@seed-design/react";
-import { ActionButton } from "seed-design/ui/action-button";
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ColorControl, SelectControl, Slider, TextControl, Toggle } from "dialkit";
-import { formatHex, formatHex8, parse } from "culori";
+import { useState } from "react";
+import { ArgControl } from "@/components/arg-control";
+import { CodePanel } from "@/components/code-panel";
+import { Button } from "@/components/ui/button";
+import { UiIcon } from "@/components/ui/icon";
+import { Menu, MenuDivider, MenuItem } from "@/components/ui/menu";
+import { Tabs } from "@/components/ui/tabs";
+import { useColorMode } from "@/hooks/use-color-mode";
+import type { PdfDownloadResult } from "@/hooks/use-workbench";
+import { cn } from "@/lib/cn";
 import type { ControlsPlacement } from "@/lib/controls-placement";
-import type { ArgType, StoryIR } from "@/lib/types";
+import { substituteArgs } from "@/lib/snippet";
+import { shortPath, type StoryIR } from "@/lib/types";
+import { type ColorMode } from "@/lib/theme";
+
+export type PanelTab = "controls" | "source" | "docs";
 
 type ControlsPanelProps = {
   selected: StoryIR | undefined;
   args: Record<string, unknown>;
   placement: ControlsPlacement;
   readOnly?: boolean;
+  zoom: number;
+  tab: PanelTab;
+  onTab: (tab: PanelTab) => void;
+  onZoom: (zoom: number) => void;
   onReset: () => void;
   onChange: (name: string, value: unknown) => void;
+  onDownloadPdf: () => Promise<PdfDownloadResult>;
 };
 
-type ArgControlProps = {
-  structured: boolean;
-  name: string;
-  argType: ArgType;
-  value: unknown;
-  readOnly: boolean;
-  onChange: (name: string, value: unknown) => void;
-};
-
-// Keep incomplete numeric/JSON edits local. Reset and external updates replace
-// the draft, while only valid values reach the compiler.
-function DraftControl({ name, value, kind, argType, onChange }: {
-  name: string;
-  value: unknown;
-  kind: "number" | "json";
-  argType: ArgType;
-  onChange: (name: string, value: unknown) => void;
-}) {
-  const serialized = kind === "json" ? JSON.stringify(value, null, 2) : String(value ?? 0);
-  const [draft, setDraft] = useState(serialized);
-  const [error, setError] = useState(false);
-  const committed = useRef(serialized);
-  useEffect(() => {
-    if (serialized !== committed.current) {
-      committed.current = serialized;
-      setDraft(serialized);
-      setError(false);
-    }
-  }, [serialized]);
-  const update = (text: string) => {
-    setDraft(text);
-    try {
-      const next: unknown = kind === "json" ? JSON.parse(text) : Number(text);
-      if (kind === "number" && (text.trim() === "" || !Number.isFinite(next))) throw new Error();
-      if (typeof next === "number" && (
-        (argType.min !== undefined && next < argType.min) ||
-        (argType.max !== undefined && next > argType.max)
-      )) throw new Error();
-      committed.current = kind === "json" ? JSON.stringify(next, null, 2) : String(next);
-      setError(false);
-      onChange(name, next);
-    } catch { setError(true); }
-  };
-  return <div className="typstbook-draft-control" data-kind={kind}>
-    <TextControl label={name} value={draft} onChange={update} />
-    {error && <Text as="p" textStyle="t2Regular" color="fg.critical" role="status">
-      {kind === "json" ? "Enter valid JSON. Preview keeps the last valid value." : "Enter a valid number within the allowed range."}
-    </Text>}
-  </div>;
-}
-
-function ArgControl({ name, argType, value, readOnly, structured, onChange }: ArgControlProps) {
-  const update = (next: unknown) => { if (!readOnly) onChange(name, next); };
-  if (readOnly) return <div className="typstbook-readonly-control">
-    <Text textStyle="t3Medium" color="fg.neutralMuted">{name}</Text>
-    <output aria-label={name}>{typeof value === "object" ? JSON.stringify(value) : String(value ?? "")}</output>
-  </div>;
-  switch (argType.control) {
-    case "boolean":
-      return <Toggle label={name} checked={Boolean(value)} onChange={update} />;
-    case "number":
-      return typeof argType.min === "number" && typeof argType.max === "number" && argType.max > argType.min
-        ? <Slider label={name} value={typeof value === "number" ? value : argType.min}
-            min={argType.min} max={argType.max} step={argType.step ?? 1} onChange={update} />
-        : <DraftControl name={name} value={value} kind="number" argType={argType} onChange={onChange} />;
-    case "select": {
-      // Index keys preserve JSON option types, including numbers and booleans.
-      const options = argType.options ?? [];
-      const index = options.findIndex(option => JSON.stringify(option) === JSON.stringify(value));
-      return <SelectControl label={name} value={index < 0 ? "" : String(index)}
-        options={options.map((option, i) => ({ value: String(i), label: typeof option === "object" ? JSON.stringify(option) : String(option) }))}
-        onChange={key => update(options[Number(key)])} />;
-    }
-    case "color":
-      return <ColorControl label={name} value={typeof value === "string" ? value : "#000000"}
-        onChange={css => {
-          // DialKit offers CSS color spaces; Typst rgb() requires hex strings.
-          const color = parse(css);
-          if (color) update(color.alpha === undefined || color.alpha === 1 ? formatHex(color) : formatHex8(color));
-        }} />;
-    case "text":
-      return structured || (value !== null && typeof value === "object")
-        ? <DraftControl name={name} value={value} kind="json" argType={argType} onChange={onChange} />
-        : <TextControl label={name} value={String(value ?? "")} onChange={update} />;
-  }
-}
+const THEMES: { id: ColorMode; label: string }[] = [
+  { id: "light-only", label: "Light" },
+  { id: "dark-only", label: "Dark" },
+  { id: "system", label: "System" },
+];
 
 export function ControlsPanel({
   selected,
   args,
   placement,
   readOnly = false,
+  zoom,
+  tab,
+  onTab,
+  onZoom,
   onReset,
   onChange,
+  onDownloadPdf,
 }: ControlsPanelProps) {
+  const { colorMode, setColorMode } = useColorMode();
   const [resetVersion, setResetVersion] = useState(0);
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
   const argEntries = selected ? Object.entries(selected.argTypes) : [];
-  const changedCount = selected ? Object.keys(selected.args).filter(
-    (name) => JSON.stringify(args[name]) !== JSON.stringify(selected.args[name]),
-  ).length : 0;
-  const borderProps = controlsBorder(placement);
+  const changedCount = selected
+    ? Object.keys(selected.args).filter((name) => JSON.stringify(args[name]) !== JSON.stringify(selected.args[name])).length
+    : 0;
+  const code = selected?.source ? substituteArgs(selected.source, args, selected.argTypes) : null;
 
   return (
-    <VStack
-      className="typstbook-controls dialkit-root"
-      height="full"
-      bg="bg.layerDefault"
-      borderColor="stroke.neutralSubtle"
-      {...borderProps}
+    <section
+      aria-label="Design"
+      className={cn(
+        /* 오른쪽 패널 */
+        "flex h-full min-h-0 min-w-0 flex-col bg-[var(--color-bg)] text-[var(--color-text)]",
+        placement === "right" ? "border-l border-[var(--color-bordertranslucent)]" : "border-t border-[var(--color-bordertranslucent)]",
+      )}
     >
-      <HStack className="typstbook-controls-header" align="center" justify="space-between" px="x3" py="x2"
-        borderBottomWidth={1} borderColor="stroke.neutralSubtle">
-        <HStack align="center" gap="x2">
-          <Text textStyle="t3Bold" color="fg.neutral">Controls</Text>
-          <Badge tone="neutral" variant="weak" size="medium">{argEntries.length}</Badge>
-          {(readOnly || changedCount > 0) && <Text textStyle="t1Regular" color="fg.neutralSubtle" aria-live="polite">
-            {readOnly ? "Read only" : `${changedCount} modified`}
-          </Text>}
-        </HStack>
-        <ActionButton variant="ghost" size="xsmall" aria-label="Reset arguments"
-          disabled={readOnly || argEntries.length === 0} onClick={() => { setResetVersion(version => version + 1); onReset(); }}>Reset</ActionButton>
-      </HStack>
-      <Box flexGrow minHeight="0" overflowY="auto" px="x3" py="x3">
-        {selected ? (
-          argEntries.length > 0 ? (
-            <ArgList placement={placement}>
-              {argEntries.map(([name, argType]) => (
-                <Box
-                  className="typstbook-control-field"
-                  key={`${selected.id}:${name}:${argType.control}:${resetVersion}`}
-                  minWidth={placement === "bottom" ? "200px" : undefined}
-                  style={
-                    placement === "bottom"
-                      ? { flexGrow: 1, flexBasis: 200, maxWidth: 320 }
-                      : undefined
-                  }
-                >
-                  <ArgControl
-                    name={name}
-                    structured={selected.args[name] !== null && typeof selected.args[name] === "object"}
-                    argType={argType}
-                    value={args[name]}
-                    readOnly={readOnly}
-                    onChange={onChange}
-                  />
-                </Box>
-              ))}
-            </ArgList>
-          ) : (
-            <Box py="x8" px="x1">
-              <Text
-                as="p"
-                textStyle="t4Regular"
-                color="fg.neutralMuted"
-                align="center"
+      <header className={cn(
+        /* 헤더 */
+        "flex flex-col gap-2 border-b border-[var(--color-border)] p-2",
+      )}>
+        <div className={cn(/* 액션 줄 */ "flex h-8 items-center justify-between gap-2 pl-1")}>
+          <Menu
+            trigger={
+              <button
+                type="button"
+                aria-label="Appearance"
+                className={cn(/* 아바타 */ "flex items-center rounded-[5px] hover:bg-[var(--color-bg-hover)]")}
               >
-                No editable arguments
-              </Text>
-              <Text as="p" textStyle="t2Regular" color="fg.neutralSubtle" align="center">
-                This story uses its source as written.
-              </Text>
-            </Box>
-          )
-        ) : <Text textStyle="t3Regular" color="fg.neutralMuted">Select a story to inspect its arguments.</Text>}
-      </Box>
-    </VStack>
+                <span className={cn(
+                  /* 이니셜 */
+                  "flex size-6 items-center justify-center rounded-full bg-[var(--color-multiplayeryellow)] text-title text-[var(--color-textonmultiplayeryellow)]",
+                )}>T</span>
+                <UiIcon name="chevron-down-16" className={cn(/* 보조 */ "text-[var(--color-icon-secondary)]")} />
+              </button>
+            }
+          >
+            {THEMES.map((theme) => (
+              <MenuItem key={theme.id} checked={colorMode === theme.id} onSelect={() => setColorMode(theme.id)}>
+                {theme.label}
+              </MenuItem>
+            ))}
+          </Menu>
+          <Button
+            variant="primary"
+            size="large"
+            aria-label="Save as PDF"
+            disabled={pdfBusy || !selected}
+            onClick={() => {
+              setPdfBusy(true);
+              setPdfError(null);
+              void onDownloadPdf().then((result) => {
+                setPdfBusy(false);
+                if (!result.ok) setPdfError(result.diagnostics.join("\n"));
+              });
+            }}
+          >
+            {pdfBusy ? "Exporting" : "Export PDF"}
+          </Button>
+        </div>
+        <div className={cn(/* 탭과 배율 */ "flex h-6 items-center gap-1")}>
+          <Tabs
+            label="Inspector"
+            value={tab}
+            onChange={onTab}
+            tabs={[
+              { id: "controls", label: "Controls" },
+              { id: "source", label: "Source" },
+              { id: "docs", label: "Docs" },
+            ]}
+          />
+          <Menu
+            align="end"
+            className={cn(/* 배율은 오른쪽 */ "ml-auto")}
+            trigger={
+              <button
+                type="button"
+                aria-label="Zoom"
+                className={cn(
+                  /* 배율 컨트롤 */
+                  "flex h-6 w-[60px] items-center text-ui tabular-nums text-[var(--color-text)]",
+                )}
+              >
+                <span className={cn(/* 숫자 */ "flex-1 text-left")}>{Math.round(zoom * 100)}%</span>
+                <UiIcon name="chevron-down-16" />
+              </button>
+            }
+          >
+            <MenuItem onSelect={() => onZoom(zoom + 0.25)}>Zoom in</MenuItem>
+            <MenuItem onSelect={() => onZoom(zoom - 0.25)}>Zoom out</MenuItem>
+            <MenuDivider />
+            <MenuItem onSelect={() => onZoom(1)}>100%</MenuItem>
+          </Menu>
+        </div>
+      </header>
+
+      <div className={cn(/* 스크롤 */ "min-h-0 flex-1 overflow-auto")}>
+        {pdfError ? <div className={cn(/* 오류 */ "px-2 pt-2")}><p className={cn("text-ui whitespace-pre-wrap text-[var(--color-text-danger)]")}>{pdfError}</p></div> : null}
+        {tab === "controls" ? (
+          <>
+            <div className={cn(
+              /* 섹션 헤더 */
+              "flex h-10 items-center gap-2 border-b border-[var(--color-border)] pr-2 pl-4",
+            )}>
+              <span className={cn(/* 제목 */ "text-ui font-[550]")}>Arguments</span>
+              <span className={cn(/* 상태 */ "text-ui text-[var(--color-text-secondary)]")}>
+                {readOnly ? "Read only" : changedCount > 0 ? `${changedCount} modified` : argEntries.length}
+              </span>
+              <Button
+                className={cn(/* 오른쪽 */ "ml-auto")}
+                aria-label="Reset arguments"
+                disabled={readOnly || argEntries.length === 0}
+                onClick={() => {
+                  setResetVersion((version) => version + 1);
+                  onReset();
+                }}
+              >
+                Reset
+              </Button>
+            </div>
+            {selected ? (
+              argEntries.length > 0 ? (
+                <div className={cn(
+                  /* 속성 목록 */
+                  placement === "bottom" ? "flex flex-wrap items-start" : "flex flex-col",
+                )}>
+                  {argEntries.map(([name, argType]) => (
+                    <div
+                      key={`${selected.id}:${name}:${argType.control}:${resetVersion}`}
+                      className={cn(placement === "bottom" ? "w-full max-w-xs min-w-[200px] flex-1" : "w-full")}
+                    >
+                      <ArgControl
+                        name={name}
+                        structured={selected.args[name] !== null && typeof selected.args[name] === "object"}
+                        argType={argType}
+                        value={args[name]}
+                        readOnly={readOnly}
+                        onChange={onChange}
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className={cn(/* 빈 인자 */ "px-4 py-6 text-center text-ui text-[var(--color-text-secondary)]")}>
+                  No editable arguments. This story uses its source as written.
+                </p>
+              )
+            ) : (
+              <p className={cn(/* 미선택 */ "px-4 py-6 text-ui text-[var(--color-text-secondary)]")}>Select a story to inspect its arguments.</p>
+            )}
+            <DimRow label="Local variables" icon="adjust" />
+            <DimRow label="Local styles" icon="plus" />
+          </>
+        ) : null}
+        {tab === "source" ? (
+          <div className={cn(/* 소스 여백 */ "p-2")}>
+            {code ? <CodePanel code={code} /> : (
+              <p className={cn(/* 소스 없음 */ "px-2 py-4 text-ui text-[var(--color-text-secondary)]")}>This story has no captured source.</p>
+            )}
+          </div>
+        ) : null}
+        {tab === "docs" ? (
+          <div className={cn(/* 문서 */ "grid gap-2 px-4 py-3")}>
+            <p className={cn(/* 설명 */ "text-ui text-[var(--color-text)]")}>{selected?.description || "No description."}</p>
+            <p className={cn(/* 경로 */ "text-ui text-[var(--color-text-secondary)]")}>{selected ? shortPath(selected.file) : "No story selected."}</p>
+          </div>
+        ) : null}
+      </div>
+    </section>
   );
 }
 
-function controlsBorder(placement: ControlsPlacement) {
-  switch (placement) {
-    case "right":
-      return { borderLeftWidth: 1 as const };
-    case "bottom":
-      return { borderTopWidth: 1 as const };
-    default: {
-      const _exhaustive: never = placement;
-      return _exhaustive;
-    }
-  }
-}
-
-function ArgList({
-  placement,
-  children,
-}: {
-  placement: ControlsPlacement;
-  children: ReactNode;
-}) {
+function DimRow({ label, icon }: { label: string; icon: "adjust" | "plus" }) {
   return (
-    <VStack
-      gap="x1_5"
-      style={{
-        flexDirection: placement === "bottom" ? "row" : "column",
-        flexWrap: placement === "bottom" ? "wrap" : "nowrap",
-        alignItems: placement === "bottom" ? "flex-start" : "stretch",
-      }}
-    >
-      {children}
-    </VStack>
+    <div className={cn(
+      /* 접힌 섹션 */
+      "flex h-10 items-center border-t border-[var(--color-border)] pr-2 pl-4 text-[var(--color-text-secondary)]",
+    )}>
+      <span className={cn(/* 이름 */ "text-ui font-[550]")}>{label}</span>
+      <span className={cn(/* 트레일 아이콘 */ "ml-auto")}>
+        <UiIcon name={icon === "adjust" ? "variable-mode" : "plus-small"} />
+      </span>
+    </div>
   );
 }

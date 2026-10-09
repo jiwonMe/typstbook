@@ -26,11 +26,19 @@ export function readColorMode(): ColorMode {
   return readStoredColorMode() ?? "system";
 }
 
+export function resolvedTheme(mode: ColorMode): "light" | "dark" {
+  if (mode === "dark-only") return "dark";
+  if (mode === "light-only") return "light";
+  if (typeof window === "undefined") return "light";
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
 export function applyColorMode(mode: ColorMode): void {
   if (typeof document === "undefined") {
     return;
   }
   document.documentElement.dataset.seedColorMode = mode;
+  document.documentElement.dataset.theme = resolvedTheme(mode);
   const meta = document.querySelector('meta[name="color-scheme"]');
   if (meta) {
     const scheme =
