@@ -16,6 +16,18 @@ describe("watchDiagnostics", () => {
     const warnings = watchDiagnostics("warning: unknown font family: bookk\n  ┌─ story.typ:1:0\n");
     assert.match(warnings[0] ?? "", /unknown font family/);
   });
+
+  it("keeps short-format diagnostics as separate lines", () => {
+    assert.deepEqual(
+      watchDiagnostics(
+        "watching wrapper.typ\npreview.typ:7:16: warning: unknown font family: bookk\nstories/a.typ:2:1: error: expected expression\n",
+      ),
+      [
+        "preview.typ:7:16: warning: unknown font family: bookk",
+        "stories/a.typ:2:1: error: expected expression",
+      ],
+    );
+  });
 });
 
 describe("selectFreshNames", () => {

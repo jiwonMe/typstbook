@@ -1,3 +1,4 @@
+import { loadTypstbookConfig } from "./config.ts";
 import { extractAllStories } from "./extractor.ts";
 import { compileStory } from "./render.ts";
 import {
@@ -13,14 +14,20 @@ export type CheckOptions = {
   packageRoot: string;
   packagePath: string;
   update: boolean;
+  fontPaths?: string[];
 };
 
 export async function runCheck(options: CheckOptions): Promise<CheckReport> {
+  const config = await loadTypstbookConfig(options.packageRoot);
+  const renderOptions = {
+    ...options,
+    fontPaths: options.fontPaths ?? config.fontPaths,
+  };
   const extracted = await extractAllStories(options);
   const results: StoryCheckResult[] = [];
 
   for (const story of extracted.stories) {
-    const compiled = await compileStory(options, {
+    const compiled = await compileStory(renderOptions, {
       file: story.file,
       title: story.title,
       args: story.args,

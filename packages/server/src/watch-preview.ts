@@ -1,6 +1,7 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { fontPathArgs } from "./config.ts";
 import type { CompileResult } from "./types.ts";
 
 export type OutputStamp = { mtimeMs: number; size: number };
@@ -13,15 +14,23 @@ export type StampedOutput = OutputStamp & { name: string };
  * If nothing looks newer (the compiler skipped a rewrite), keep the directory
  * as it is so a no-op compile still returns the previous pages.
  */
+const SHORT_DIAG = /^.+?:\d+:\d+:\s*(error|warning):/i;
+
 /** Keep Typst warning/error blocks and drop `typst watch` status lines. */
 export function watchDiagnostics(text: string): string[] {
   const lines = text.split(/\r?\n/);
-  const kept: string[] = [];
+  const short: string[] = [];
+  const human: string[] = [];
   let keeping = false;
   for (const line of lines) {
+    if (SHORT_DIAG.test(line)) {
+      keeping = false;
+      short.push(line);
+      continue;
+    }
     if (/^(error|warning):/.test(line)) {
       keeping = true;
-      kept.push(line);
+      human.push(line);
       continue;
     }
     if (!keeping) {
@@ -39,9 +48,12 @@ export function watchDiagnostics(text: string): string[] {
     if (line.trim() === "") {
       continue;
     }
-    kept.push(line);
+    human.push(line);
   }
-  return kept.length > 0 ? [kept.join("\n")] : [];
+  if (short.length > 0) {
+    return short;
+  }
+  return human.length > 0 ? [human.join("\n")] : [];
 }
 
 export function selectFreshNames(before: Map<string, OutputStamp>, after: StampedOutput[]): string[] {
@@ -59,6 +71,7 @@ export type WatchPreviewOptions = {
   typst: string;
   packageRoot: string;
   packagePath: string;
+  fontPaths?: string[];
 };
 
 /**
@@ -213,10 +226,13 @@ export class TypstPreviewWatch {
       this.options.typst,
       [
         "watch",
+        "--diagnostic-format",
+        "short",
         "--root",
         this.options.packageRoot,
         "--package-path",
         this.options.packagePath,
+        ...fontPathArgs(this.options.fontPaths ?? []),
         this.wrapperPath,
         join(this.dir, "page-{p}.svg"),
       ],

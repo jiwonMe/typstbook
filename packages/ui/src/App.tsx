@@ -14,7 +14,17 @@ import { readZoomMode, type ZoomMode } from "@/lib/preview-fit";
 import { persistSidebarCollapsed, readStoredSidebarCollapsed } from "@/lib/sidebar";
 
 export function App() {
-  const { state, selectStory, setArg, setZoom, setViewport, runChecks, downloadPdf, readOnly } = useWorkbench();
+  const {
+    state,
+    selectStory,
+    setArg,
+    setZoom,
+    setViewport,
+    runChecks,
+    openEditor,
+    downloadPdf,
+    readOnly,
+  } = useWorkbench();
   const { placement, setPlacement } = useControlsPlacement();
   const { overlayOpen, isCompact, closeOverlay, toggleOverlay } = useSidebarOverlay();
   const [collapsed, setCollapsed] = useState(readStoredSidebarCollapsed);
@@ -149,6 +159,11 @@ export function App() {
                 setPanelTab("tests");
                 runChecks(storyId);
               }}
+              problems={state.problems}
+              extractErrors={state.errors}
+              fonts={state.fonts}
+              onOpenEditor={openEditor}
+              onSelectStory={selectStory}
             />
           }
         />

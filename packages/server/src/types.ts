@@ -1,4 +1,30 @@
-export type ControlType = "text" | "number" | "boolean" | "select" | "color";
+export type ControlType = "text" | "number" | "boolean" | "select" | "color" | "markup";
+
+export type DiagnosticSeverity = "error" | "warning";
+
+export type Diagnostic = {
+  severity: DiagnosticSeverity;
+  message: string;
+  file: string | null;
+  line: number | null;
+  column: number | null;
+  storyId: string | null;
+  raw: string;
+};
+
+export type FontStatus = "available" | "missing";
+
+export type FontInfo = {
+  family: string;
+  status: FontStatus;
+  sources: string[];
+};
+
+export type FontReport = {
+  available: string[];
+  referenced: FontInfo[];
+  fontPaths: string[];
+};
 
 export type ArgType = {
   control: ControlType;
@@ -94,21 +120,36 @@ export type CompileResult = {
 };
 
 export type ServerMessage =
-  | { type: "stories"; stories: StoryIR[]; errors: FileError[]; tokens: PackageToken[] }
-  | { type: "preview"; storyId: string; pages: string[]; diagnostics: string[] }
+  | {
+      type: "stories";
+      stories: StoryIR[];
+      errors: FileError[];
+      tokens: PackageToken[];
+      fonts: FontReport;
+    }
+  | {
+      type: "preview";
+      storyId: string;
+      pages: string[];
+      diagnostics: string[];
+      problems: Diagnostic[];
+    }
   | {
       type: "preview-error";
       storyId: string;
       diagnostics: string[];
+      problems: Diagnostic[];
       lastGoodPages: string[];
     }
-  | { type: "check-results"; results: StoryCheckRun[] };
+  | { type: "check-results"; results: StoryCheckRun[] }
+  | { type: "fonts"; fonts: FontReport };
 
 export type ClientMessage =
   | { type: "select"; storyId: string }
   | { type: "set-args"; storyId: string; args: Record<string, unknown> }
   | { type: "set-viewport"; viewport: ViewportSpec | null }
-  | { type: "run-checks"; storyId: string | null };
+  | { type: "run-checks"; storyId: string | null }
+  | { type: "open-editor"; file: string; line?: number | null; column?: number | null };
 
 export type InvalidateReason = "args" | "story-file" | "source" | "config";
 
@@ -143,6 +184,7 @@ export type StaticSiteData = {
   stories: StaticStory[];
   errors: FileError[];
   tokens: PackageToken[];
+  fonts: FontReport;
   /** Checks evaluated against default args at build time. */
   checks: StoryCheckRun[];
 };

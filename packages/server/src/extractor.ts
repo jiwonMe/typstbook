@@ -55,7 +55,8 @@ function asArgTypes(value: unknown): Record<string, ArgType> {
       control === "number" ||
       control === "boolean" ||
       control === "select" ||
-      control === "color"
+      control === "color" ||
+      control === "markup"
     ) {
       result[key] = {
         control,

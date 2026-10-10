@@ -1,4 +1,8 @@
-export type ControlType = "text" | "number" | "boolean" | "select" | "color";
+import type { Diagnostic, FontReport } from "@/lib/diagnostics";
+export type { Diagnostic, FontInfo, FontReport, FontStatus } from "@/lib/diagnostics";
+export { EMPTY_FONTS, formatDiagnosticLocation, vscodeFileUrl } from "@/lib/diagnostics";
+
+export type ControlType = "text" | "number" | "boolean" | "select" | "color" | "markup";
 
 export type ArgType = {
   control: ControlType;
@@ -63,21 +67,36 @@ export type FileError = {
 };
 
 export type ServerMessage =
-  | { type: "stories"; stories: StoryIR[]; errors: FileError[]; tokens?: PackageToken[] }
-  | { type: "preview"; storyId: string; pages: string[]; diagnostics: string[] }
+  | {
+      type: "stories";
+      stories: StoryIR[];
+      errors: FileError[];
+      tokens?: PackageToken[];
+      fonts?: FontReport;
+    }
+  | {
+      type: "preview";
+      storyId: string;
+      pages: string[];
+      diagnostics: string[];
+      problems?: Diagnostic[];
+    }
   | {
       type: "preview-error";
       storyId: string;
       diagnostics: string[];
+      problems?: Diagnostic[];
       lastGoodPages: string[];
     }
-  | { type: "check-results"; results: StoryCheckRun[] };
+  | { type: "check-results"; results: StoryCheckRun[] }
+  | { type: "fonts"; fonts: FontReport };
 
 export type ClientMessage =
   | { type: "select"; storyId: string }
   | { type: "set-args"; storyId: string; args: Record<string, unknown> }
   | { type: "set-viewport"; viewport: ViewportSpec | null }
-  | { type: "run-checks"; storyId: string | null };
+  | { type: "run-checks"; storyId: string | null }
+  | { type: "open-editor"; file: string; line?: number | null; column?: number | null };
 
 export function mergeStoryArgs(
   defaults: Record<string, unknown>,

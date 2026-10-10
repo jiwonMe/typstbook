@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ArgControl } from "@/components/arg-control";
 import { CodePanel } from "@/components/code-panel";
+import { ProblemsPanel } from "@/components/problems-panel";
 import { TestsPanel } from "@/components/tests-panel";
 import { TokenBrowser } from "@/components/token-browser";
 import { Button } from "@/components/ui/button";
@@ -12,10 +13,18 @@ import type { PdfDownloadResult } from "@/hooks/use-workbench";
 import { cn } from "@/lib/cn";
 import type { ControlsPlacement } from "@/lib/controls-placement";
 import { substituteArgs } from "@/lib/snippet";
-import { shortPath, type PackageToken, type StoryCheckRun, type StoryIR } from "@/lib/types";
+import {
+  shortPath,
+  type Diagnostic,
+  type FileError,
+  type FontReport,
+  type PackageToken,
+  type StoryCheckRun,
+  type StoryIR,
+} from "@/lib/types";
 import { type ColorMode } from "@/lib/theme";
 
-export type PanelTab = "controls" | "source" | "docs" | "tests";
+export type PanelTab = "controls" | "source" | "docs" | "tests" | "problems";
 
 type ControlsPanelProps = {
   selected: StoryIR | undefined;
@@ -33,6 +42,11 @@ type ControlsPanelProps = {
   checks: StoryCheckRun[];
   checksRunning: boolean;
   onRunChecks: (storyId: string | null) => void;
+  problems: Diagnostic[];
+  extractErrors: FileError[];
+  fonts: FontReport;
+  onOpenEditor: (file: string, line?: number | null, column?: number | null) => void;
+  onSelectStory: (storyId: string) => void;
 };
 
 const THEMES: { id: ColorMode; label: string }[] = [
@@ -57,6 +71,11 @@ export function ControlsPanel({
   checks,
   checksRunning,
   onRunChecks,
+  problems,
+  extractErrors,
+  fonts,
+  onOpenEditor,
+  onSelectStory,
 }: ControlsPanelProps) {
   const { colorMode, setColorMode } = useColorMode();
   const [resetVersion, setResetVersion] = useState(0);
@@ -67,6 +86,9 @@ export function ControlsPanel({
     ? Object.keys(selected.args).filter((name) => JSON.stringify(args[name]) !== JSON.stringify(selected.args[name])).length
     : 0;
   const code = selected?.source ? substituteArgs(selected.source, args, selected.argTypes) : null;
+  const problemCount = problems.length
+    + extractErrors.length
+    + fonts.referenced.filter((font) => font.status === "missing").length;
 
   return (
     <section
@@ -130,6 +152,7 @@ export function ControlsPanel({
               { id: "source", label: "Source" },
               { id: "docs", label: "Docs" },
               { id: "tests", label: "Tests" },
+              { id: "problems", label: problemCount > 0 ? `Problems (${problemCount})` : "Problems" },
             ]}
           />
           <Menu
@@ -236,6 +259,17 @@ export function ControlsPanel({
             <p className={cn(/* 설명 */ "text-ui text-[var(--color-text)]")}>{selected?.description || "No description."}</p>
             <p className={cn(/* 경로 */ "text-ui text-[var(--color-text-secondary)]")}>{selected ? shortPath(selected.file) : "No story selected."}</p>
           </div>
+        ) : null}
+        {tab === "problems" ? (
+          <ProblemsPanel
+            problems={problems}
+            extractErrors={extractErrors}
+            fonts={fonts}
+            selectedStoryId={selected?.id ?? null}
+            readOnly={readOnly}
+            onOpen={onOpenEditor}
+            onSelectStory={onSelectStory}
+          />
         ) : null}
       </div>
     </section>

@@ -3,8 +3,12 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { extname, join, relative, resolve } from "node:path";
 import { WebSocketServer, type WebSocket } from "ws";
 import { runPackageChecks } from "./checks.ts";
+import { loadTypstbookConfig, type TypstbookConfig } from "./config.ts";
+import { parseDiagnostics } from "./diagnostics.ts";
 import { extractAllStories, extractStoryFile } from "./extractor.ts";
+import { collectFontReport } from "./fonts.ts";
 import { invalidateFor } from "./invalidate.ts";
+import { openInEditor, vscodeFileUrl } from "./open-editor.ts";
 import { compileStoryToPdf, watchWrapperSource } from "./render.ts";
 import { discoverPackageTokens } from "./tokens.ts";
 import { TypstPreviewWatch } from "./watch-preview.ts";
@@ -12,6 +16,7 @@ import type {
   ClientMessage,
   CompileRequest,
   FileError,
+  FontReport,
   PackageToken,
   ServerMessage,
   StoryIR,
@@ -25,7 +30,10 @@ import { ensureHelperPackagePath, requireTypstBinary } from "./typst.ts";
 
 const WORKBENCH_WS_PATH = "/__typstbook_ws";
 const WORKBENCH_PDF_PATH = "/__typstbook_pdf";
+const WORKBENCH_OPEN_PATH = "/__typstbook_open";
 const COMPILE_DEBOUNCE_MS = 80;
+
+const EMPTY_FONTS: FontReport = { available: [], referenced: [], fontPaths: [] };
 
 function readRequestBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolveBody, reject) => {
@@ -82,9 +90,11 @@ export class Workbench {
   private readonly port: number;
   private typst = "";
   private packagePath = "";
+  private config: TypstbookConfig = { fontPaths: [] };
   private stories: StoryIR[] = [];
   private errors: FileError[] = [];
   private tokens: PackageToken[] = [];
+  private fonts: FontReport = EMPTY_FONTS;
   private readonly sessions = new Map<WebSocket, ClientSession>();
   private httpServer: ReturnType<typeof createServer> | null = null;
   private wss: WebSocketServer | null = null;
@@ -98,6 +108,7 @@ export class Workbench {
   async start(): Promise<string> {
     this.typst = await requireTypstBinary();
     this.packagePath = await ensureHelperPackagePath();
+    this.config = await loadTypstbookConfig(this.packageRoot);
     await this.reloadAll();
 
     const httpServer = createServer();
@@ -130,6 +141,10 @@ export class Workbench {
         void this.handlePdfRequest(req, res);
         return;
       }
+      if (req.method === "POST" && pathname === WORKBENCH_OPEN_PATH) {
+        void this.handleOpenRequest(req, res);
+        return;
+      }
       serveApp(req, res);
     });
 
@@ -153,6 +168,7 @@ export class Workbench {
         stories: this.stories,
         errors: this.errors,
         tokens: this.tokens,
+        fonts: this.fonts,
       });
       socket.on("message", (data) => {
         this.onClientMessage(session, String(data));
@@ -177,6 +193,33 @@ export class Workbench {
     return `http://127.0.0.1:${boundPort}`;
   }
 
+  private async handleOpenRequest(
+    req: IncomingMessage,
+    res: ServerResponse,
+  ): Promise<void> {
+    let body: { file?: string; line?: number | null; column?: number | null };
+    try {
+      body = JSON.parse(await readRequestBody(req)) as typeof body;
+    } catch {
+      sendJson(res, 400, { ok: false, detail: "malformed open request" });
+      return;
+    }
+    if (!body.file || typeof body.file !== "string") {
+      sendJson(res, 400, { ok: false, detail: "file is required" });
+      return;
+    }
+    const request = {
+      file: body.file,
+      line: typeof body.line === "number" ? body.line : null,
+      column: typeof body.column === "number" ? body.column : null,
+    };
+    const opened = openInEditor(this.packageRoot, request);
+    sendJson(res, opened.ok ? 200 : 422, {
+      ...opened,
+      vscodeUrl: vscodeFileUrl(this.packageRoot, request),
+    });
+  }
+
   private async handlePdfRequest(
     req: IncomingMessage,
     res: ServerResponse,
@@ -190,7 +233,12 @@ export class Workbench {
     }
     try {
       const compiled = await compileStoryToPdf(
-        { typst: this.typst, packageRoot: this.packageRoot, packagePath: this.packagePath },
+        {
+          typst: this.typst,
+          packageRoot: this.packageRoot,
+          packagePath: this.packagePath,
+          fontPaths: this.config.fontPaths,
+        },
         request,
       );
       if (!compiled.pdf) {
@@ -251,6 +299,7 @@ export class Workbench {
       const reason =
         rel === "typst.toml" ||
         rel.endsWith("/typst.toml") ||
+        rel === "typstbook.config.json" ||
         isPreviewPath(rel)
           ? "config"
           : isStoryFile(rel)
@@ -327,6 +376,13 @@ export class Workbench {
       case "run-checks":
         void this.runChecks(session, message.storyId);
         break;
+      case "open-editor":
+        openInEditor(this.packageRoot, {
+          file: message.file,
+          line: message.line,
+          column: message.column,
+        });
+        break;
       default: {
         const _exhaustive: never = message;
         return _exhaustive;
@@ -335,6 +391,11 @@ export class Workbench {
   }
 
   private async reloadAll(): Promise<void> {
+    const previousFonts = this.config.fontPaths.join("\0");
+    this.config = await loadTypstbookConfig(this.packageRoot);
+    if (previousFonts !== this.config.fontPaths.join("\0")) {
+      await this.resetPreviews();
+    }
     const extracted = await extractAllStories({
       typst: this.typst,
       packageRoot: this.packageRoot,
@@ -343,13 +404,28 @@ export class Workbench {
     this.stories = extracted.stories;
     this.errors = extracted.errors;
     this.tokens = await discoverPackageTokens(this.typst, this.packageRoot);
+    this.fonts = await collectFontReport(
+      this.typst,
+      this.packageRoot,
+      this.config,
+      this.tokens,
+    );
     this.syncAllSessions();
     this.broadcast({
       type: "stories",
       stories: this.stories,
       errors: this.errors,
       tokens: this.tokens,
+      fonts: this.fonts,
     });
+  }
+
+  private async resetPreviews(): Promise<void> {
+    for (const session of this.sessions.values()) {
+      await session.preview?.stop();
+      session.preview = null;
+      session.watchStoryId = null;
+    }
   }
 
   private async reloadFile(file: string): Promise<void> {
@@ -379,6 +455,7 @@ export class Workbench {
       stories: this.stories,
       errors: this.errors,
       tokens: this.tokens,
+      fonts: this.fonts,
     });
   }
 
@@ -432,6 +509,7 @@ export class Workbench {
         typst: this.typst,
         packageRoot: this.packageRoot,
         packagePath: this.packagePath,
+        fontPaths: this.config.fontPaths,
       });
       preview.onUpdate = (result) => {
         this.publishPreview(session, result);
@@ -449,11 +527,17 @@ export class Workbench {
     if (!storyId) {
       return;
     }
+    const problems = parseDiagnostics(result.diagnostics, {
+      storyId,
+      packageRoot: this.packageRoot,
+    });
+    void this.refreshFontsFromProblems(problems);
     if (result.pages.length === 0) {
       this.send(session.socket, {
         type: "preview-error",
         storyId,
         diagnostics: result.diagnostics,
+        problems,
         lastGoodPages: session.lastGoodPages.get(storyId) ?? [],
       });
       return;
@@ -464,7 +548,24 @@ export class Workbench {
       storyId,
       pages: result.pages,
       diagnostics: result.diagnostics,
+      problems,
     });
+  }
+
+  private async refreshFontsFromProblems(
+    problems: ReturnType<typeof parseDiagnostics>,
+  ): Promise<void> {
+    if (!problems.some((item) => /unknown font family/i.test(item.message))) {
+      return;
+    }
+    this.fonts = await collectFontReport(
+      this.typst,
+      this.packageRoot,
+      this.config,
+      this.tokens,
+      problems.map((item) => item.raw),
+    );
+    this.broadcast({ type: "fonts", fonts: this.fonts });
   }
 
   private async compileSelected(session: ClientSession, refresh = false): Promise<void> {
@@ -485,6 +586,17 @@ export class Workbench {
           type: "preview-error",
           storyId,
           diagnostics: [`Unknown story: ${storyId}`],
+          problems: [
+            {
+              severity: "error",
+              message: `Unknown story: ${storyId}`,
+              file: null,
+              line: null,
+              column: null,
+              storyId,
+              raw: `Unknown story: ${storyId}`,
+            },
+          ],
           lastGoodPages: session.lastGoodPages.get(storyId) ?? [],
         });
         return;
@@ -521,6 +633,7 @@ export class Workbench {
       typst: this.typst,
       packageRoot: this.packageRoot,
       packagePath: this.packagePath,
+      fontPaths: this.config.fontPaths,
     };
     if (storyId && !this.stories.some((story) => story.id === storyId)) {
       this.send(session.socket, {

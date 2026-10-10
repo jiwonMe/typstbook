@@ -5,3 +5,7 @@ entrypoint = "src/lib.typ"
 authors = ["typstbook"]
 license = "MIT"
 description = "Dogfood package for typstbook"
+
+# Extra directories passed to every `typst` invoke as `--font-path`.
+# [tool.typstbook]
+# font-paths = ["fonts"]
