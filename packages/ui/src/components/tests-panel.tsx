@@ -1,3 +1,4 @@
+import { SnapshotDiff } from "@/components/snapshot-diff";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import type { StoryCheckRun, StoryIR } from "@/lib/types";
@@ -6,19 +7,25 @@ export function TestsPanel({
   selected,
   results,
   running,
+  accepting,
   readOnly,
   onRun,
   onRunAll,
+  onAcceptSnapshot,
 }: {
   selected: StoryIR | undefined;
   results: StoryCheckRun[];
   running: boolean;
+  accepting: boolean;
   readOnly: boolean;
   onRun: () => void;
   onRunAll: () => void;
+  onAcceptSnapshot: (storyId: string) => void;
 }) {
   const current = selected ? results.find((result) => result.storyId === selected.id) : undefined;
   const passed = results.filter((result) => result.status === "pass").length;
+  const snapshot = current?.snapshot;
+  const showDiff = snapshot && snapshot.status !== "match";
   return (
     <section data-testid="tests-panel" className={cn(/* 검사 */ "flex flex-col")}>
       <div className={cn(
@@ -68,6 +75,14 @@ export function TestsPanel({
           {selected ? "Run to compare this story with its snapshot and declared checks." : "Select a story to run its checks."}
         </p>
       )}
+      {showDiff && selected ? (
+        <SnapshotDiff
+          snapshot={snapshot}
+          readOnly={readOnly}
+          accepting={accepting}
+          onAccept={() => onAcceptSnapshot(selected.id)}
+        />
+      ) : null}
       {results.length > 1 ? (
         <ul className={cn(/* 전체 */ "border-t border-[var(--color-border)]")}>
           {results.map((result) => (

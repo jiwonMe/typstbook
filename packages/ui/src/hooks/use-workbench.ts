@@ -2,9 +2,12 @@ import { MIN_ZOOM, MAX_ZOOM } from "@/lib/preview-fit";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { base64ToBlob, safeFilename, triggerDownload } from "@/lib/download";
 import {
+  EMPTY_FONTS,
   mergeStoryArgs,
   type ClientMessage,
+  type Diagnostic,
   type FileError,
+  type FontReport,
   type PackageToken,
   type ServerMessage,
   type StoryCheckRun,
@@ -23,6 +26,8 @@ export type WorkbenchState = {
   pages: string[];
   lastGoodPages: string[];
   diagnostics: string[];
+  problems: Diagnostic[];
+  fonts: FontReport;
   previewError: boolean;
   zoom: number;
   pageIndex: number;
@@ -30,6 +35,7 @@ export type WorkbenchState = {
   tokens: PackageToken[];
   checks: StoryCheckRun[];
   checksRunning: boolean;
+  snapshotAccepting: boolean;
   viewportId: ViewportId;
   viewport: ViewportSpec | null;
 };
@@ -43,6 +49,7 @@ type StaticSiteData = {
   stories: StaticStory[];
   errors: FileError[];
   tokens?: PackageToken[];
+  fonts?: FontReport;
   checks?: StoryCheckRun[];
 };
 
@@ -108,6 +115,8 @@ function initialState(): WorkbenchState {
       pages: initial?.pages ?? [],
       lastGoodPages: initial?.pages ?? [],
       diagnostics: initial?.diagnostics ?? [],
+      problems: [],
+      fonts: STATIC_DATA.fonts ?? EMPTY_FONTS,
       previewError: false,
       zoom: 1,
       pageIndex: 0,
@@ -115,6 +124,7 @@ function initialState(): WorkbenchState {
       tokens: STATIC_DATA.tokens ?? [],
       checks: STATIC_DATA.checks ?? [],
       checksRunning: false,
+      snapshotAccepting: false,
       viewportId: "auto",
       viewport: null,
     };
@@ -128,6 +138,8 @@ function initialState(): WorkbenchState {
     pages: [],
     lastGoodPages: [],
     diagnostics: [],
+    problems: [],
+    fonts: EMPTY_FONTS,
     previewError: false,
     zoom: 1,
     pageIndex: 0,
@@ -135,6 +147,7 @@ function initialState(): WorkbenchState {
     tokens: [],
     checks: [],
     checksRunning: false,
+    snapshotAccepting: false,
     viewportId: storedViewport.id,
     viewport: storedViewport.spec,
   };
@@ -170,6 +183,7 @@ export function useWorkbench() {
           pages: staticStory?.pages ?? [],
           lastGoodPages: staticStory?.pages ?? [],
           diagnostics: staticStory?.diagnostics ?? [],
+          problems: [],
           previewError: false,
           pageIndex: 0,
         }));
@@ -201,6 +215,24 @@ export function useWorkbench() {
           return prev;
         }
         const args = { ...prev.args, [name]: value };
+        syncUrl(prev.selectedId, args);
+        send({ type: "set-args", storyId: prev.selectedId, args });
+        return { ...prev, args };
+      });
+    },
+    [send],
+  );
+
+  const setArgs = useCallback(
+    (patch: Record<string, unknown>) => {
+      if (STATIC_DATA) {
+        return;
+      }
+      setState((prev) => {
+        if (!prev.selectedId) {
+          return prev;
+        }
+        const args = { ...prev.args, ...patch };
         syncUrl(prev.selectedId, args);
         send({ type: "set-args", storyId: prev.selectedId, args });
         return { ...prev, args };
@@ -285,6 +317,44 @@ export function useWorkbench() {
     [send],
   );
 
+  const acceptSnapshot = useCallback(
+    (storyId: string) => {
+      if (STATIC_DATA) {
+        return;
+      }
+      setState((prev) => ({ ...prev, snapshotAccepting: true }));
+      send({ type: "accept-snapshot", storyId });
+    },
+    [send],
+  );
+
+  const openEditor = useCallback(
+    (file: string, line?: number | null, column?: number | null) => {
+      if (STATIC_DATA) {
+        return;
+      }
+      send({ type: "open-editor", file, line, column });
+      void fetch("/__typstbook_open", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ file, line, column }),
+      })
+        .then(async (response) => {
+          const body = (await response.json().catch(() => null)) as {
+            vscodeUrl?: string;
+            ok?: boolean;
+          } | null;
+          if (body?.vscodeUrl && !body.ok) {
+            window.location.href = body.vscodeUrl;
+          }
+        })
+        .catch(() => {
+          // Optional best-effort open.
+        });
+    },
+    [send],
+  );
+
   const setZoom = useCallback((zoom: number) => {
     setState((prev) => ({
       ...prev,
@@ -359,6 +429,7 @@ export function useWorkbench() {
                   stories,
                   errors,
                   tokens: message.tokens ?? prev.tokens,
+                  fonts: message.fonts ?? prev.fonts,
                   selectedId: first.id,
                   args: { ...first.args },
                   pageIndex: 0,
@@ -369,6 +440,7 @@ export function useWorkbench() {
                 stories,
                 errors,
                 tokens: message.tokens ?? prev.tokens,
+                fonts: message.fonts ?? prev.fonts,
                 selectedId: null,
                 args: {},
               };
@@ -378,7 +450,13 @@ export function useWorkbench() {
               (story) => story.id === prev.selectedId,
             );
             if (!current || !prev.selectedId) {
-              return { ...prev, stories, errors, tokens: message.tokens ?? prev.tokens };
+              return {
+                ...prev,
+                stories,
+                errors,
+                tokens: message.tokens ?? prev.tokens,
+                fonts: message.fonts ?? prev.fonts,
+              };
             }
 
             const args = mergeStoryArgs(current.args, prev.args);
@@ -415,7 +493,14 @@ export function useWorkbench() {
               });
             }
 
-            return { ...prev, stories, errors, args, tokens: message.tokens ?? prev.tokens };
+            return {
+              ...prev,
+              stories,
+              errors,
+              args,
+              tokens: message.tokens ?? prev.tokens,
+              fonts: message.fonts ?? prev.fonts,
+            };
           });
           break;
         }
@@ -440,6 +525,7 @@ export function useWorkbench() {
               pages: message.pages,
               lastGoodPages: message.pages,
               diagnostics: message.diagnostics,
+              problems: message.problems ?? [],
               previewError: false,
               pageIndex: Math.min(
                 prev.pageIndex,
@@ -456,6 +542,7 @@ export function useWorkbench() {
             return {
               ...prev,
               diagnostics: message.diagnostics,
+              problems: message.problems ?? [],
               lastGoodPages: message.lastGoodPages,
               previewError: true,
             };
@@ -466,7 +553,24 @@ export function useWorkbench() {
             ...prev,
             checks: message.results,
             checksRunning: false,
+            snapshotAccepting: false,
           }));
+          break;
+        case "snapshot-accepted":
+          setState((prev) => ({
+            ...prev,
+            snapshotAccepting: false,
+            checks: message.result
+              ? prev.checks.some((item) => item.storyId === message.storyId)
+                ? prev.checks.map((item) =>
+                    item.storyId === message.storyId ? message.result! : item,
+                  )
+                : [...prev.checks, message.result]
+              : prev.checks,
+          }));
+          break;
+        case "fonts":
+          setState((prev) => ({ ...prev, fonts: message.fonts }));
           break;
         default: {
           const _exhaustive: never = message;
@@ -488,10 +592,13 @@ export function useWorkbench() {
     state,
     selectStory,
     setArg,
+    setArgs,
     setZoom,
     setPageIndex,
     setViewport,
     runChecks,
+    acceptSnapshot,
+    openEditor,
     downloadPdf,
     readOnly: Boolean(STATIC_DATA),
   };

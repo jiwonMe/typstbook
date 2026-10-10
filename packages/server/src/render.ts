@@ -1,6 +1,7 @@
 import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { fontPathArgs } from "./config.ts";
 import type { CompileRequest, CompileResult, ViewportSpec } from "./types.ts";
 import { diagnosticsFromStderr, HELPER_PACKAGE_SPEC, runTypst } from "./typst.ts";
 import { toPosix } from "./ir.ts";
@@ -10,6 +11,7 @@ export type RenderOptions = {
   typst: string;
   packageRoot: string;
   packagePath: string;
+  fontPaths?: string[];
 };
 
 export function renderWrapperSource(
@@ -60,10 +62,13 @@ export async function compileStory(
       options.typst,
       [
         "compile",
+        "--diagnostic-format",
+        "short",
         "--root",
         options.packageRoot,
         "--package-path",
         options.packagePath,
+        ...fontPathArgs(options.fontPaths ?? []),
         "--input",
         `args=${JSON.stringify(request.args)}`,
         "--input",
@@ -121,10 +126,13 @@ export async function compileStoryToPdf(
       options.typst,
       [
         "compile",
+        "--diagnostic-format",
+        "short",
         "--root",
         options.packageRoot,
         "--package-path",
         options.packagePath,
+        ...fontPathArgs(options.fontPaths ?? []),
         "--input",
         `args=${JSON.stringify(request.args)}`,
         "--input",

@@ -41,6 +41,25 @@ describe("storiesFromEvalJson", () => {
     assert.equal(stories[0]?.argTypes.title?.control, "text");
   });
 
+  it("accepts markup controls for content args", () => {
+    const { stories } = storiesFromEvalJson(
+      "stories/body.stories.typ",
+      JSON.stringify([
+        {
+          title: "Body",
+          description: null,
+          args: { body: "hi" },
+          "arg-types": { body: { control: "markup" } },
+          page: null,
+          checks: null,
+          "has-render": true,
+        },
+      ]),
+    );
+    assert.equal(stories[0]?.argTypes.body?.control, "markup");
+    assert.equal(stories[0]?.args.body, "hi");
+  });
+
   it("carries min/max/step through for number controls", () => {
     const { stories } = storiesFromEvalJson(
       "stories/test.stories.typ",
@@ -104,11 +123,15 @@ describe("extractAllStories", () => {
       "stories/callout--info",
       "stories/callout--warning",
       "stories/math--numbered-equation",
+      "stories/matrix--variant-matrix",
       "stories/resume--resume-default",
       "stories/test--test",
     ]);
     const warning = extracted.stories.find((story) => story.id === "stories/callout--warning");
     assert.equal(warning?.checks?.pages, 1);
     assert.ok(warning?.checks?.width?.endsWith("pt"));
+    const matrix = extracted.stories.find((story) => story.id === "stories/matrix--variant-matrix");
+    assert.equal(matrix?.matrixCells.length, 6);
+    assert.equal(matrix?.matrixCells[0]?.label, "variant=info, title=Short");
   });
 });

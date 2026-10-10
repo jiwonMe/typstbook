@@ -71,7 +71,8 @@ describe("findStoryCalls", () => {
       calls.map((c) => c.title),
       ["Warning", "Info"],
     );
-    assert.match(calls[0]?.argsSource ?? "", /args: \(title: "주의", variant: "warning"\)/);
+    assert.match(calls[0]?.argsSource ?? "", /title: "주의"/);
+    assert.match(calls[0]?.argsSource ?? "", /body:/);
   });
 
   it("is not confused by a raw fence containing parens and quotes", async () => {
@@ -111,7 +112,7 @@ describe("extractStorySnippets", () => {
     assert.match(warning ?? "", /^\(args\) => \{/);
     assert.match(
       warning ?? "",
-      /callout\(title: args\.title, variant: args\.variant\)/,
+      /callout\(title: args\.title, variant: args\.variant, args\.body\)/,
     );
     assert.doesNotMatch(warning ?? "", /title: "Warning"/);
   });

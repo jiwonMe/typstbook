@@ -36,6 +36,10 @@ describe("typstLiteral", () => {
     assert.equal(typstLiteral("#239DAD", "color"), 'rgb("#239DAD")');
   });
 
+  it("renders markup-controlled strings as content blocks", () => {
+    assert.equal(typstLiteral("hello *world*", "markup"), "[hello *world*]");
+  });
+
   it("renders arrays, with a trailing comma for a single element", () => {
     assert.equal(typstLiteral([1, 2, 3]), "(1, 2, 3)");
     assert.equal(typstLiteral([1]), "(1,)");
@@ -78,10 +82,13 @@ describe("substituteArgs", () => {
     assert.ok(snippet);
     const result = substituteArgs(
       snippet ?? "",
-      { title: "커스텀", variant: "error" },
-      { variant: { control: "select", options: ["info", "warning", "error"] } },
+      { title: "커스텀", variant: "error", body: "새 본문" },
+      {
+        variant: { control: "select", options: ["info", "warning", "error"] },
+        body: { control: "markup" },
+      },
     );
-    assert.match(result, /callout\(title: "커스텀", variant: "error"\)/);
+    assert.match(result, /callout\(title: "커스텀", variant: "error", \[새 본문\]\)/);
   });
 
   it("substitutes the real numbered-equation snippet's args.at(...) usage", async () => {

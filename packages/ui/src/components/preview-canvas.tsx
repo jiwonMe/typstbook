@@ -29,6 +29,7 @@ type PreviewCanvasProps = {
   viewportSpec: ViewportSpec | null;
   readOnly?: boolean;
   onViewport: (id: ViewportId, spec: ViewportSpec | null) => void;
+  onSelectMatrixCell?: (args: Record<string, unknown>) => void;
   leading?: ReactNode;
   compact?: boolean;
 };
@@ -51,9 +52,12 @@ export function PreviewCanvas({
   viewportSpec,
   readOnly = false,
   onViewport,
+  onSelectMatrixCell,
   leading,
   compact = false,
 }: PreviewCanvasProps) {
+  const matrixCells = selected?.matrixCells ?? [];
+  const matrixMode = matrixCells.length > 0;
   const manualZoom = useCallback((next: number) => {
     onZoomMode("manual");
     onZoom(next);
@@ -194,17 +198,53 @@ export function PreviewCanvas({
                 data-print-world
                 style={{ transform: `scale(${zoom})`, transformOrigin: "top left", width: "max-content" }}
               >
-                <div className={cn(/* 페이지 간격 */ "flex flex-col items-center gap-4")}>
-                  {pages.map((pageSvg, index) => (
-                    <PreviewPage
-                      key={index}
-                      svg={pageSvg}
-                      title={pages.length > 1 ? `${selected?.title ?? "Page"} ${index + 1}` : selected?.title ?? "Preview"}
-                      outline={outline}
-                      measure={measure}
-                      dimmed={previewError}
-                    />
-                  ))}
+                <div
+                  className={cn(
+                    /* 페이지 간격 */
+                    matrixMode
+                      ? "grid grid-cols-1 items-start gap-4 sm:grid-cols-2 xl:grid-cols-3"
+                      : "flex flex-col items-center gap-4",
+                  )}
+                >
+                  {pages.map((pageSvg, index) => {
+                    const cell = matrixCells[index];
+                    const title = cell?.label
+                      ?? (pages.length > 1 ? `${selected?.title ?? "Page"} ${index + 1}` : selected?.title ?? "Preview");
+                    return (
+                      <button
+                        key={index}
+                        type="button"
+                        disabled={!cell || readOnly || !onSelectMatrixCell}
+                        className={cn(
+                          /* 셀 */
+                          "text-left",
+                          cell && "rounded-[5px] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--color-border-selected)]",
+                          cell && "hover:ring-1 hover:ring-[var(--color-border-selected)]",
+                        )}
+                        onClick={() => {
+                          if (cell && onSelectMatrixCell) {
+                            onSelectMatrixCell(cell.args);
+                          }
+                        }}
+                      >
+                        {cell ? (
+                          <p className={cn(
+                            /* 캡션 */
+                            "mb-1 px-0.5 text-ui text-[var(--color-text-secondary)]",
+                          )}>
+                            {cell.label}
+                          </p>
+                        ) : null}
+                        <PreviewPage
+                          svg={pageSvg}
+                          title={title}
+                          outline={outline}
+                          measure={measure}
+                          dimmed={previewError}
+                        />
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>

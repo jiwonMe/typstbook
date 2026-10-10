@@ -14,7 +14,19 @@ import { readZoomMode, type ZoomMode } from "@/lib/preview-fit";
 import { persistSidebarCollapsed, readStoredSidebarCollapsed } from "@/lib/sidebar";
 
 export function App() {
-  const { state, selectStory, setArg, setZoom, setViewport, runChecks, downloadPdf, readOnly } = useWorkbench();
+  const {
+    state,
+    selectStory,
+    setArg,
+    setArgs,
+    setZoom,
+    setViewport,
+    runChecks,
+    acceptSnapshot,
+    openEditor,
+    downloadPdf,
+    readOnly,
+  } = useWorkbench();
   const { placement, setPlacement } = useControlsPlacement();
   const { overlayOpen, isCompact, closeOverlay, toggleOverlay } = useSidebarOverlay();
   const [collapsed, setCollapsed] = useState(readStoredSidebarCollapsed);
@@ -112,6 +124,7 @@ export function App() {
               viewportSpec={state.viewport}
               readOnly={readOnly}
               onViewport={setViewport}
+              onSelectMatrixCell={setArgs}
               leading={
                 <SidebarToggle
                   compact={isCompact}
@@ -145,10 +158,17 @@ export function App() {
               tokens={state.tokens}
               checks={state.checks}
               checksRunning={state.checksRunning}
+              snapshotAccepting={state.snapshotAccepting}
               onRunChecks={(storyId) => {
                 setPanelTab("tests");
                 runChecks(storyId);
               }}
+              onAcceptSnapshot={acceptSnapshot}
+              problems={state.problems}
+              extractErrors={state.errors}
+              fonts={state.fonts}
+              onOpenEditor={openEditor}
+              onSelectStory={selectStory}
             />
           }
         />

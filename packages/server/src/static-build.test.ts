@@ -32,7 +32,14 @@ async function makeFakeUiRoot(): Promise<string> {
   return dir;
 }
 
-const emptyData: StaticSiteData = { stories: [], errors: [], tokens: [], checks: [] };
+const emptyFonts = { available: [] as string[], referenced: [], fontPaths: [] as string[] };
+const emptyData: StaticSiteData = {
+  stories: [],
+  errors: [],
+  tokens: [],
+  fonts: emptyFonts,
+  checks: [],
+};
 
 describe("writeStaticSite", () => {
   it("copies UI assets and injects the data bootstrap script", async () => {
@@ -51,6 +58,9 @@ describe("writeStaticSite", () => {
           page: null,
           checks: null,
           source: null,
+          docs: null,
+          matrix: null,
+          matrixCells: [],
           pages: ["<svg>ok</svg>"],
           diagnostics: [],
           pdf: null,
@@ -58,6 +68,7 @@ describe("writeStaticSite", () => {
       ],
       errors: [],
       tokens: [],
+      fonts: emptyFonts,
       checks: [],
     };
     try {
@@ -85,6 +96,7 @@ describe("writeStaticSite", () => {
         { file: "x.stories.typ", message: "</script><script>alert(1)</script>" },
       ],
       tokens: [],
+      fonts: emptyFonts,
       checks: [],
     };
     try {
@@ -152,7 +164,7 @@ describe("buildStaticSite", () => {
         outDir,
       });
       assert.equal(data.errors.length, 0);
-      assert.equal(data.stories.length, 5);
+      assert.equal(data.stories.length, 6);
       assert.ok(data.stories.every((s) => s.pages.length > 0));
       assert.ok(
         data.stories.every((s) => s.pdf && Buffer.from(s.pdf, "base64").subarray(0, 5).toString() === "%PDF-"),

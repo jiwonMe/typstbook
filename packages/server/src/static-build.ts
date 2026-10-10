@@ -1,7 +1,9 @@
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { evaluateChecks } from "./checks.ts";
+import { loadTypstbookConfig } from "./config.ts";
 import { extractAllStories } from "./extractor.ts";
+import { collectFontReport } from "./fonts.ts";
 import { compileStory, compileStoryToPdf } from "./render.ts";
 import { readSnapshotPages, snapshotDirFor } from "./snapshot.ts";
 import { discoverPackageTokens } from "./tokens.ts";
@@ -13,6 +15,7 @@ export type StaticBuildOptions = {
   packagePath: string;
   uiRoot: string;
   outDir: string;
+  fontPaths?: string[];
 };
 
 export async function buildStaticSite(
@@ -24,8 +27,12 @@ export async function buildStaticSite(
     );
   }
 
+  const config = await loadTypstbookConfig(options.packageRoot);
+  const fontPaths = options.fontPaths ?? config.fontPaths;
+  const renderOptions = { ...options, fontPaths };
   const extracted = await extractAllStories(options);
   const tokens = await discoverPackageTokens(options.typst, options.packageRoot);
+  const fonts = await collectFontReport(options.typst, options.packageRoot, config, tokens);
   const stories: StaticStory[] = [];
   const checks: StoryCheckRun[] = [];
   for (const story of extracted.stories) {
@@ -36,8 +43,8 @@ export async function buildStaticSite(
       page: story.page,
     };
     const [compiled, pdfResult] = await Promise.all([
-      compileStory(options, request),
-      compileStoryToPdf(options, request),
+      compileStory(renderOptions, request),
+      compileStoryToPdf(renderOptions, request),
     ]);
     stories.push({
       ...story,
@@ -49,7 +56,7 @@ export async function buildStaticSite(
       compiled.pages.length > 0
         ? await readSnapshotPages(snapshotDirFor(options.packageRoot, story.id))
         : null;
-    const assertions = evaluateChecks({
+    const { assertions, snapshot } = evaluateChecks({
       checks: story.checks,
       pages: compiled.pages,
       diagnostics: compiled.diagnostics,
@@ -62,9 +69,13 @@ export async function buildStaticSite(
       status: assertions.every((item) => item.status === "pass") ? "pass" : "fail",
       assertions,
       diagnostics: compiled.diagnostics,
+      // Static builds keep assertion text only — embedding every SVG twice bloats the site.
+      snapshot: snapshot
+        ? { status: snapshot.status, expected: null, actual: [], diffPages: snapshot.diffPages }
+        : null,
     });
   }
-  const data: StaticSiteData = { stories, errors: extracted.errors, tokens, checks };
+  const data: StaticSiteData = { stories, errors: extracted.errors, tokens, fonts, checks };
 
   await writeStaticSite(options.uiRoot, options.outDir, data);
   return data;

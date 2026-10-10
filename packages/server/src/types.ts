@@ -1,4 +1,30 @@
-export type ControlType = "text" | "number" | "boolean" | "select" | "color";
+export type ControlType = "text" | "number" | "boolean" | "select" | "color" | "markup";
+
+export type DiagnosticSeverity = "error" | "warning";
+
+export type Diagnostic = {
+  severity: DiagnosticSeverity;
+  message: string;
+  file: string | null;
+  line: number | null;
+  column: number | null;
+  storyId: string | null;
+  raw: string;
+};
+
+export type FontStatus = "available" | "missing";
+
+export type FontInfo = {
+  family: string;
+  status: FontStatus;
+  sources: string[];
+};
+
+export type FontReport = {
+  available: string[];
+  referenced: FontInfo[];
+  fontPaths: string[];
+};
 
 export type ArgType = {
   control: ControlType;
@@ -20,6 +46,31 @@ export type StoryChecks = {
   height: string | null;
 };
 
+export type ParamDoc = {
+  name: string;
+  type: string | null;
+  default: string | null;
+  description: string | null;
+  positional: boolean;
+};
+
+export type FunctionDoc = {
+  name: string;
+  module: string;
+  description: string | null;
+  returnType: string | null;
+  params: ParamDoc[];
+  signature: string;
+};
+
+export type MatrixSpec = Record<string, unknown[]>;
+
+export type MatrixCell = {
+  id: string;
+  args: Record<string, unknown>;
+  label: string;
+};
+
 export type StoryIR = {
   id: string;
   file: string;
@@ -31,6 +82,12 @@ export type StoryIR = {
   checks: StoryChecks | null;
   /** Verbatim `render:` source (falls back to the whole `#story(...)` call), or null if it could not be isolated. */
   source: string | null;
+  /** Autodocs for the primary function this story renders, if detected. */
+  docs: FunctionDoc | null;
+  /** Variant axes from `#story(matrix: (...))`, or null. */
+  matrix: MatrixSpec | null;
+  /** Expanded matrix cells (empty when `matrix` is null). */
+  matrixCells: MatrixCell[];
 };
 
 export type TokenKind = "color" | "length" | "font" | "number" | "string" | "boolean";
@@ -60,6 +117,15 @@ export type AssertionResult = {
   detail: string;
 };
 
+export type SnapshotCompare = {
+  status: "match" | "new" | "changed";
+  /** Baseline SVG pages, or null when none exist yet. */
+  expected: string[] | null;
+  /** Fresh compile pages used for the check. */
+  actual: string[];
+  diffPages: number[];
+};
+
 export type StoryCheckRun = {
   storyId: string;
   file: string;
@@ -67,6 +133,8 @@ export type StoryCheckRun = {
   status: "pass" | "fail";
   assertions: AssertionResult[];
   diagnostics: string[];
+  /** Present when a snapshot assertion ran; pages are included so the UI can diff. */
+  snapshot: SnapshotCompare | null;
 };
 
 export type FileError = {
@@ -94,21 +162,44 @@ export type CompileResult = {
 };
 
 export type ServerMessage =
-  | { type: "stories"; stories: StoryIR[]; errors: FileError[]; tokens: PackageToken[] }
-  | { type: "preview"; storyId: string; pages: string[]; diagnostics: string[] }
+  | {
+      type: "stories";
+      stories: StoryIR[];
+      errors: FileError[];
+      tokens: PackageToken[];
+      fonts: FontReport;
+    }
+  | {
+      type: "preview";
+      storyId: string;
+      pages: string[];
+      diagnostics: string[];
+      problems: Diagnostic[];
+    }
   | {
       type: "preview-error";
       storyId: string;
       diagnostics: string[];
+      problems: Diagnostic[];
       lastGoodPages: string[];
     }
-  | { type: "check-results"; results: StoryCheckRun[] };
+  | { type: "check-results"; results: StoryCheckRun[] }
+  | { type: "fonts"; fonts: FontReport }
+  | {
+      type: "snapshot-accepted";
+      storyId: string;
+      ok: boolean;
+      detail: string;
+      result?: StoryCheckRun;
+    };
 
 export type ClientMessage =
   | { type: "select"; storyId: string }
   | { type: "set-args"; storyId: string; args: Record<string, unknown> }
   | { type: "set-viewport"; viewport: ViewportSpec | null }
-  | { type: "run-checks"; storyId: string | null };
+  | { type: "run-checks"; storyId: string | null }
+  | { type: "open-editor"; file: string; line?: number | null; column?: number | null }
+  | { type: "accept-snapshot"; storyId: string };
 
 export type InvalidateReason = "args" | "story-file" | "source" | "config";
 
@@ -143,6 +234,7 @@ export type StaticSiteData = {
   stories: StaticStory[];
   errors: FileError[];
   tokens: PackageToken[];
+  fonts: FontReport;
   /** Checks evaluated against default args at build time. */
   checks: StoryCheckRun[];
 };

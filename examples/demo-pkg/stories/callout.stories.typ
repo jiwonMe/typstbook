@@ -3,10 +3,16 @@
 
 #story(
   title: "Warning",
-  args: (title: "주의", variant: "warning"),
+  description: "Callout with an editable markup body.",
+  args: (
+    title: "주의",
+    variant: "warning",
+    body: "본문은 Controls에서 Typst 마크업으로 편집합니다.",
+  ),
   arg-types: (
     title: (control: "text"),
     variant: (control: "select", options: ("info", "warning", "error")),
+    body: (control: "markup"),
   ),
   page: (paper: "a6", margin: 12pt),
   checks: (
@@ -16,16 +22,21 @@
     height: 148mm,
   ),
   render: (args) => {
-    callout(title: args.title, variant: args.variant)[본문은 스토리에 고정]
+    callout(title: args.title, variant: args.variant, args.body)
   },
 )
 
 #story(
   title: "Info",
-  args: (title: "Note", variant: "info"),
+  args: (
+    title: "Note",
+    variant: "info",
+    body: "A reusable callout.",
+  ),
   arg-types: (
     title: (control: "text"),
     variant: (control: "select", options: ("info", "warning", "error")),
+    body: (control: "markup"),
   ),
   page: (paper: "a6", margin: 12pt),
   checks: (
@@ -35,6 +46,6 @@
     height: 148mm,
   ),
   render: (args) => {
-    callout(title: args.title, variant: args.variant)[A reusable callout.]
+    callout(title: args.title, variant: args.variant, args.body)
   },
 )

@@ -41,7 +41,7 @@ describe("runCheck", () => {
         update: false,
       });
       assert.equal(report.fileErrors.length, 0);
-      assert.equal(report.results.length, 5);
+      assert.equal(report.results.length, 6);
       assert.ok(report.results.every((r) => r.status === "new"));
       assert.equal(report.ok, false);
     } finally {
