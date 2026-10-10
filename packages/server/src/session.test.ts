@@ -95,7 +95,11 @@ describe("Workbench multi-client isolation", () => {
         JSON.stringify({
           type: "set-args",
           storyId: "stories/callout--warning",
-          args: { title: "클라이언트 A 전용", variant: "error" },
+          args: {
+            title: "클라이언트 A 전용",
+            variant: "error",
+            body: "본문은 Controls에서 Typst 마크업으로 편집합니다.",
+          },
         }),
       );
       const previewA2 = await waitFor(
@@ -146,7 +150,11 @@ describe("PDF export", () => {
         body: JSON.stringify({
           file: "stories/callout.stories.typ",
           title: "Warning",
-          args: { title: "주의", variant: "warning" },
+          args: {
+            title: "주의",
+            variant: "warning",
+            body: "본문은 Controls에서 Typst 마크업으로 편집합니다.",
+          },
           page: { paper: "a6", margin: "12pt" },
         }),
       });

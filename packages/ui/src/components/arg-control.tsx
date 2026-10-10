@@ -9,6 +9,7 @@ import {
   TextField,
 } from "@/components/ui/field";
 import { cn } from "@/lib/cn";
+import { MARKUP_PRESETS } from "@/lib/markup-presets";
 import type { ArgType } from "@/lib/types";
 
 type ArgControlProps = {
@@ -145,6 +146,14 @@ export function ArgControl({ name, argType, value, readOnly, structured, onChang
           />
         </PropertyRow>
       );
+    case "markup":
+      return (
+        <MarkupField
+          name={name}
+          value={typeof value === "string" ? value : String(value ?? "")}
+          onChange={update}
+        />
+      );
     case "text":
       return structured || (value !== null && typeof value === "object")
         ? <DraftField name={name} value={value} kind="json" argType={argType} onChange={onChange} />
@@ -154,4 +163,47 @@ export function ArgControl({ name, argType, value, readOnly, structured, onChang
           </PropertyRow>
         );
   }
+}
+
+function MarkupField({
+  name,
+  value,
+  onChange,
+}: {
+  name: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <PropertyRow label={name} stack>
+      <div className={cn(/* 프리셋 */ "mb-1 flex flex-wrap gap-1")}>
+        {MARKUP_PRESETS.map((preset) => (
+          <button
+            key={preset.id}
+            type="button"
+            className={cn(
+              /* 칩 */
+              "h-6 rounded-[5px] px-2 text-ui text-[var(--color-text-secondary)]",
+              "hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-text)]",
+              "focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--color-border-selected)]",
+            )}
+            onClick={() => onChange(preset.value)}
+          >
+            {preset.label}
+          </button>
+        ))}
+      </div>
+      <textarea
+        aria-label={name}
+        value={value}
+        spellCheck={false}
+        className={cn(
+          /* 마크업 입력 */
+          "min-h-24 w-full rounded-[5px] bg-[var(--color-bg-secondary)] px-2 py-1.5 font-mono text-[11px] leading-4 text-[var(--color-text)] outline-none",
+          "focus:outline focus:outline-1 focus:outline-[var(--color-border-selected)]",
+        )}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </PropertyRow>
+  );
 }

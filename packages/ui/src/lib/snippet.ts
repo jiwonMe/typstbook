@@ -20,6 +20,9 @@ export function typstLiteral(value: unknown, control?: ControlType): string {
   if (control === "color" && typeof value === "string") {
     return `rgb(${typstString(value)})`;
   }
+  if (control === "markup" && typeof value === "string") {
+    return `[${value}]`;
+  }
   if (typeof value === "boolean") {
     return value ? "true" : "false";
   }

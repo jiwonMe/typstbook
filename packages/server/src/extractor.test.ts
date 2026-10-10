@@ -41,6 +41,25 @@ describe("storiesFromEvalJson", () => {
     assert.equal(stories[0]?.argTypes.title?.control, "text");
   });
 
+  it("accepts markup controls for content args", () => {
+    const { stories } = storiesFromEvalJson(
+      "stories/body.stories.typ",
+      JSON.stringify([
+        {
+          title: "Body",
+          description: null,
+          args: { body: "hi" },
+          "arg-types": { body: { control: "markup" } },
+          page: null,
+          checks: null,
+          "has-render": true,
+        },
+      ]),
+    );
+    assert.equal(stories[0]?.argTypes.body?.control, "markup");
+    assert.equal(stories[0]?.args.body, "hi");
+  });
+
   it("carries min/max/step through for number controls", () => {
     const { stories } = storiesFromEvalJson(
       "stories/test.stories.typ",

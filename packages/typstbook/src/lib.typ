@@ -2,6 +2,22 @@
 
 #let decode-args(raw) = json(bytes(raw))
 
+/// Turn markup-control string args into content via `eval(..., mode: "markup")`.
+#let coerce-args(args, arg-types) = {
+  let out = (:)
+  for key in args.keys() {
+    let value = args.at(key)
+    let meta = if key in arg-types { arg-types.at(key) } else { (:) }
+    let control = if type(meta) == dictionary { meta.at("control", default: none) } else { none }
+    if control == "markup" and type(value) == str {
+      out.insert(key, eval(value, mode: "markup"))
+    } else {
+      out.insert(key, value)
+    }
+  }
+  out
+}
+
 #let story(
   title: none,
   description: none,
@@ -114,7 +130,10 @@
   if found.render == none {
     panic("typstbook: story has no render: " + title)
   }
-  let body = (found.render)(args)
+  // Live overrides win; story defaults fill keys the caller omitted.
+  let merged = found.args + args
+  let coerced = coerce-args(merged, found.arg-types)
+  let body = (found.render)(coerced)
   let spec = apply-viewport(found.page, viewport)
   if spec != none {
     page(..spec, body)
