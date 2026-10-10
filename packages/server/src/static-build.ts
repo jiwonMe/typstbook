@@ -56,7 +56,7 @@ export async function buildStaticSite(
       compiled.pages.length > 0
         ? await readSnapshotPages(snapshotDirFor(options.packageRoot, story.id))
         : null;
-    const assertions = evaluateChecks({
+    const { assertions, snapshot } = evaluateChecks({
       checks: story.checks,
       pages: compiled.pages,
       diagnostics: compiled.diagnostics,
@@ -69,6 +69,10 @@ export async function buildStaticSite(
       status: assertions.every((item) => item.status === "pass") ? "pass" : "fail",
       assertions,
       diagnostics: compiled.diagnostics,
+      // Static builds keep assertion text only — embedding every SVG twice bloats the site.
+      snapshot: snapshot
+        ? { status: snapshot.status, expected: null, actual: [], diffPages: snapshot.diffPages }
+        : null,
     });
   }
   const data: StaticSiteData = { stories, errors: extracted.errors, tokens, fonts, checks };

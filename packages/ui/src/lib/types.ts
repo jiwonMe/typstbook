@@ -52,6 +52,13 @@ export type AssertionResult = {
   detail: string;
 };
 
+export type SnapshotCompare = {
+  status: "match" | "new" | "changed";
+  expected: string[] | null;
+  actual: string[];
+  diffPages: number[];
+};
+
 export type StoryCheckRun = {
   storyId: string;
   file: string;
@@ -59,6 +66,7 @@ export type StoryCheckRun = {
   status: "pass" | "fail";
   assertions: AssertionResult[];
   diagnostics: string[];
+  snapshot?: SnapshotCompare | null;
 };
 
 export type FileError = {
@@ -89,14 +97,22 @@ export type ServerMessage =
       lastGoodPages: string[];
     }
   | { type: "check-results"; results: StoryCheckRun[] }
-  | { type: "fonts"; fonts: FontReport };
+  | { type: "fonts"; fonts: FontReport }
+  | {
+      type: "snapshot-accepted";
+      storyId: string;
+      ok: boolean;
+      detail: string;
+      result?: StoryCheckRun;
+    };
 
 export type ClientMessage =
   | { type: "select"; storyId: string }
   | { type: "set-args"; storyId: string; args: Record<string, unknown> }
   | { type: "set-viewport"; viewport: ViewportSpec | null }
   | { type: "run-checks"; storyId: string | null }
-  | { type: "open-editor"; file: string; line?: number | null; column?: number | null };
+  | { type: "open-editor"; file: string; line?: number | null; column?: number | null }
+  | { type: "accept-snapshot"; storyId: string };
 
 export function mergeStoryArgs(
   defaults: Record<string, unknown>,

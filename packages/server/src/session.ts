@@ -2,7 +2,7 @@ import { watch } from "chokidar";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { extname, join, relative, resolve } from "node:path";
 import { WebSocketServer, type WebSocket } from "ws";
-import { runPackageChecks } from "./checks.ts";
+import { acceptStorySnapshot, runPackageChecks } from "./checks.ts";
 import { loadTypstbookConfig, type TypstbookConfig } from "./config.ts";
 import { parseDiagnostics } from "./diagnostics.ts";
 import { extractAllStories, extractStoryFile } from "./extractor.ts";
@@ -376,6 +376,9 @@ export class Workbench {
       case "run-checks":
         void this.runChecks(session, message.storyId);
         break;
+      case "accept-snapshot":
+        void this.acceptSnapshot(session, message.storyId);
+        break;
       case "open-editor":
         openInEditor(this.packageRoot, {
           file: message.file,
@@ -648,6 +651,7 @@ export class Workbench {
               { name: "Story", status: "fail", detail: `Unknown story: ${storyId}` },
             ],
             diagnostics: [],
+            snapshot: null,
           },
         ],
       });
@@ -658,6 +662,46 @@ export class Workbench {
       : this.stories;
     const results = await runPackageChecks(options, stories);
     this.send(session.socket, { type: "check-results", results });
+  }
+
+  private async acceptSnapshot(session: ClientSession, storyId: string): Promise<void> {
+    const story = this.stories.find((item) => item.id === storyId);
+    if (!story) {
+      this.send(session.socket, {
+        type: "snapshot-accepted",
+        storyId,
+        ok: false,
+        detail: `Unknown story: ${storyId}`,
+      });
+      return;
+    }
+    const options = {
+      typst: this.typst,
+      packageRoot: this.packageRoot,
+      packagePath: this.packagePath,
+      fontPaths: this.config.fontPaths,
+    };
+    try {
+      const result = await acceptStorySnapshot(options, story);
+      this.send(session.socket, {
+        type: "snapshot-accepted",
+        storyId,
+        ok: result.status === "pass",
+        detail:
+          result.status === "pass"
+            ? `Accepted baseline for ${story.title}.`
+            : result.assertions.map((item) => item.detail).join("\n"),
+        result,
+      });
+      this.send(session.socket, { type: "check-results", results: [result] });
+    } catch (error) {
+      this.send(session.socket, {
+        type: "snapshot-accepted",
+        storyId,
+        ok: false,
+        detail: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 
   private broadcast(message: ServerMessage): void {

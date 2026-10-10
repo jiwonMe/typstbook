@@ -35,6 +35,7 @@ export type WorkbenchState = {
   tokens: PackageToken[];
   checks: StoryCheckRun[];
   checksRunning: boolean;
+  snapshotAccepting: boolean;
   viewportId: ViewportId;
   viewport: ViewportSpec | null;
 };
@@ -123,6 +124,7 @@ function initialState(): WorkbenchState {
       tokens: STATIC_DATA.tokens ?? [],
       checks: STATIC_DATA.checks ?? [],
       checksRunning: false,
+      snapshotAccepting: false,
       viewportId: "auto",
       viewport: null,
     };
@@ -145,6 +147,7 @@ function initialState(): WorkbenchState {
     tokens: [],
     checks: [],
     checksRunning: false,
+    snapshotAccepting: false,
     viewportId: storedViewport.id,
     viewport: storedViewport.spec,
   };
@@ -292,6 +295,17 @@ export function useWorkbench() {
       }
       setState((prev) => ({ ...prev, checksRunning: true }));
       send({ type: "run-checks", storyId });
+    },
+    [send],
+  );
+
+  const acceptSnapshot = useCallback(
+    (storyId: string) => {
+      if (STATIC_DATA) {
+        return;
+      }
+      setState((prev) => ({ ...prev, snapshotAccepting: true }));
+      send({ type: "accept-snapshot", storyId });
     },
     [send],
   );
@@ -521,6 +535,20 @@ export function useWorkbench() {
             ...prev,
             checks: message.results,
             checksRunning: false,
+            snapshotAccepting: false,
+          }));
+          break;
+        case "snapshot-accepted":
+          setState((prev) => ({
+            ...prev,
+            snapshotAccepting: false,
+            checks: message.result
+              ? prev.checks.some((item) => item.storyId === message.storyId)
+                ? prev.checks.map((item) =>
+                    item.storyId === message.storyId ? message.result! : item,
+                  )
+                : [...prev.checks, message.result]
+              : prev.checks,
           }));
           break;
         case "fonts":
@@ -550,6 +578,7 @@ export function useWorkbench() {
     setPageIndex,
     setViewport,
     runChecks,
+    acceptSnapshot,
     openEditor,
     downloadPdf,
     readOnly: Boolean(STATIC_DATA),

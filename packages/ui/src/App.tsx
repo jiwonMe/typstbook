@@ -21,6 +21,7 @@ export function App() {
     setZoom,
     setViewport,
     runChecks,
+    acceptSnapshot,
     openEditor,
     downloadPdf,
     readOnly,
@@ -155,10 +156,12 @@ export function App() {
               tokens={state.tokens}
               checks={state.checks}
               checksRunning={state.checksRunning}
+              snapshotAccepting={state.snapshotAccepting}
               onRunChecks={(storyId) => {
                 setPanelTab("tests");
                 runChecks(storyId);
               }}
+              onAcceptSnapshot={acceptSnapshot}
               problems={state.problems}
               extractErrors={state.errors}
               fonts={state.fonts}

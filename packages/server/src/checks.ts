@@ -1,8 +1,14 @@
 import { compileStory } from "./render.ts";
-import { diffSnapshot, readSnapshotPages, snapshotDirFor } from "./snapshot.ts";
+import {
+  diffSnapshot,
+  readSnapshotPages,
+  snapshotDirFor,
+  writeSnapshotPages,
+} from "./snapshot.ts";
 import type {
   AssertionResult,
   CompileRequest,
+  SnapshotCompare,
   StoryCheckRun,
   StoryChecks,
   StoryIR,
@@ -80,22 +86,32 @@ export function evaluateChecks(input: {
   pages: string[];
   diagnostics: string[];
   expected: string[] | null;
-}): AssertionResult[] {
+}): { assertions: AssertionResult[]; snapshot: SnapshotCompare | null } {
   if (input.pages.length === 0) {
-    return [
-      {
-        name: "Compiles",
-        status: "fail",
-        detail: input.diagnostics.join("\n") || "The story produced no pages.",
-      },
-    ];
+    return {
+      assertions: [
+        {
+          name: "Compiles",
+          status: "fail",
+          detail: input.diagnostics.join("\n") || "The story produced no pages.",
+        },
+      ],
+      snapshot: null,
+    };
   }
 
   const checks = effectiveChecks(input.checks);
   const results: AssertionResult[] = [];
+  let snapshot: SnapshotCompare | null = null;
 
   if (checks.snapshot) {
     const diff = diffSnapshot(input.expected, input.pages);
+    snapshot = {
+      status: diff.status,
+      expected: input.expected,
+      actual: input.pages,
+      diffPages: diff.diffPages,
+    };
     if (diff.status === "match") {
       results.push({
         name: "Snapshot",
@@ -106,7 +122,7 @@ export function evaluateChecks(input: {
       results.push({
         name: "Snapshot",
         status: "fail",
-        detail: "No snapshot yet. Run `typstbook test --update` to write one.",
+        detail: "No snapshot yet. Accept the baseline or run `typstbook test --update`.",
       });
     } else {
       results.push({
@@ -160,13 +176,14 @@ export function evaluateChecks(input: {
     });
   }
 
-  return results;
+  return { assertions: results, snapshot };
 }
 
 export type CheckRunnerOptions = {
   typst: string;
   packageRoot: string;
   packagePath: string;
+  fontPaths?: string[];
 };
 
 export async function runStoryChecks(
@@ -184,7 +201,7 @@ export async function runStoryChecks(
     compiled.pages.length > 0
       ? await readSnapshotPages(snapshotDirFor(options.packageRoot, story.id))
       : null;
-  const assertions = evaluateChecks({
+  const { assertions, snapshot } = evaluateChecks({
     checks: story.checks,
     pages: compiled.pages,
     diagnostics: compiled.diagnostics,
@@ -197,7 +214,41 @@ export async function runStoryChecks(
     status: assertions.every((item) => item.status === "pass") ? "pass" : "fail",
     assertions,
     diagnostics: compiled.diagnostics,
+    snapshot,
   };
+}
+
+/** Write the latest compile as the committed baseline (= `typstbook test --update` for one story). */
+export async function acceptStorySnapshot(
+  options: CheckRunnerOptions,
+  story: StoryIR,
+): Promise<StoryCheckRun> {
+  const request: CompileRequest = {
+    file: story.file,
+    title: story.title,
+    args: story.args,
+    page: story.page,
+  };
+  const compiled = await compileStory(options, request);
+  if (compiled.pages.length === 0) {
+    return {
+      storyId: story.id,
+      file: story.file,
+      title: story.title,
+      status: "fail",
+      assertions: [
+        {
+          name: "Snapshot",
+          status: "fail",
+          detail: compiled.diagnostics.join("\n") || "Compile failed; nothing to accept.",
+        },
+      ],
+      diagnostics: compiled.diagnostics,
+      snapshot: null,
+    };
+  }
+  await writeSnapshotPages(snapshotDirFor(options.packageRoot, story.id), compiled.pages);
+  return runStoryChecks(options, story);
 }
 
 export async function runPackageChecks(

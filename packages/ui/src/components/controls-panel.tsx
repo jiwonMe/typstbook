@@ -41,7 +41,9 @@ type ControlsPanelProps = {
   tokens: PackageToken[];
   checks: StoryCheckRun[];
   checksRunning: boolean;
+  snapshotAccepting: boolean;
   onRunChecks: (storyId: string | null) => void;
+  onAcceptSnapshot: (storyId: string) => void;
   problems: Diagnostic[];
   extractErrors: FileError[];
   fonts: FontReport;
@@ -70,7 +72,9 @@ export function ControlsPanel({
   tokens,
   checks,
   checksRunning,
+  snapshotAccepting,
   onRunChecks,
+  onAcceptSnapshot,
   problems,
   extractErrors,
   fonts,
@@ -242,9 +246,11 @@ export function ControlsPanel({
             selected={selected}
             results={checks}
             running={checksRunning}
+            accepting={snapshotAccepting}
             readOnly={readOnly}
             onRun={() => selected && onRunChecks(selected.id)}
             onRunAll={() => onRunChecks(null)}
+            onAcceptSnapshot={onAcceptSnapshot}
           />
         ) : null}
         {tab === "source" ? (
