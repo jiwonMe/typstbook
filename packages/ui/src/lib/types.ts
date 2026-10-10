@@ -36,6 +36,14 @@ export type FunctionDoc = {
   signature: string;
 };
 
+export type MatrixSpec = Record<string, unknown[]>;
+
+export type MatrixCell = {
+  id: string;
+  args: Record<string, unknown>;
+  label: string;
+};
+
 export type StoryIR = {
   id: string;
   file: string;
@@ -47,6 +55,8 @@ export type StoryIR = {
   checks: StoryChecks | null;
   source: string | null;
   docs?: FunctionDoc | null;
+  matrix?: MatrixSpec | null;
+  matrixCells?: MatrixCell[];
 };
 
 export type TokenKind = "color" | "length" | "font" | "number" | "string" | "boolean";

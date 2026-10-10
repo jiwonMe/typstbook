@@ -123,11 +123,15 @@ describe("extractAllStories", () => {
       "stories/callout--info",
       "stories/callout--warning",
       "stories/math--numbered-equation",
+      "stories/matrix--variant-matrix",
       "stories/resume--resume-default",
       "stories/test--test",
     ]);
     const warning = extracted.stories.find((story) => story.id === "stories/callout--warning");
     assert.equal(warning?.checks?.pages, 1);
     assert.ok(warning?.checks?.width?.endsWith("pt"));
+    const matrix = extracted.stories.find((story) => story.id === "stories/matrix--variant-matrix");
+    assert.equal(matrix?.matrixCells.length, 6);
+    assert.equal(matrix?.matrixCells[0]?.label, "variant=info, title=Short");
   });
 });

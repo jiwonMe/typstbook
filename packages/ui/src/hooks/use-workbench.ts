@@ -223,6 +223,24 @@ export function useWorkbench() {
     [send],
   );
 
+  const setArgs = useCallback(
+    (patch: Record<string, unknown>) => {
+      if (STATIC_DATA) {
+        return;
+      }
+      setState((prev) => {
+        if (!prev.selectedId) {
+          return prev;
+        }
+        const args = { ...prev.args, ...patch };
+        syncUrl(prev.selectedId, args);
+        send({ type: "set-args", storyId: prev.selectedId, args });
+        return { ...prev, args };
+      });
+    },
+    [send],
+  );
+
   const downloadPdf = useCallback(async (): Promise<PdfDownloadResult> => {
     const current = stateRef.current;
     if (!current.selectedId) {
@@ -574,6 +592,7 @@ export function useWorkbench() {
     state,
     selectStory,
     setArg,
+    setArgs,
     setZoom,
     setPageIndex,
     setViewport,

@@ -63,6 +63,14 @@ export type FunctionDoc = {
   signature: string;
 };
 
+export type MatrixSpec = Record<string, unknown[]>;
+
+export type MatrixCell = {
+  id: string;
+  args: Record<string, unknown>;
+  label: string;
+};
+
 export type StoryIR = {
   id: string;
   file: string;
@@ -76,6 +84,10 @@ export type StoryIR = {
   source: string | null;
   /** Autodocs for the primary function this story renders, if detected. */
   docs: FunctionDoc | null;
+  /** Variant axes from `#story(matrix: (...))`, or null. */
+  matrix: MatrixSpec | null;
+  /** Expanded matrix cells (empty when `matrix` is null). */
+  matrixCells: MatrixCell[];
 };
 
 export type TokenKind = "color" | "length" | "font" | "number" | "string" | "boolean";

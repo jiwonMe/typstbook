@@ -25,6 +25,7 @@
   arg-types: (:),
   page: none,
   checks: none,
+  matrix: none,
   render: none,
 ) = {
   assert(title != none, message: "typstbook: story title is required")
@@ -36,6 +37,10 @@
     checks == none or type(checks) == dictionary,
     message: "typstbook: story checks must be a dictionary",
   )
+  assert(
+    matrix == none or type(matrix) == dictionary,
+    message: "typstbook: story matrix must be a dictionary of arrays",
+  )
   _stories.update(arr => {
     arr + ((
       title: title,
@@ -44,6 +49,7 @@
       arg-types: arg-types,
       page: page,
       checks: checks,
+      matrix: matrix,
       render: render,
     ),)
   })
@@ -58,9 +64,39 @@
       arg-types: s.arg-types,
       page: s.page,
       checks: s.checks,
+      matrix: s.matrix,
       has-render: s.render != none,
     )) <typstbook-story>]
   }
+}
+
+/// Cartesian product of `matrix` axis values as an array of dictionaries.
+#let matrix-combinations(matrix) = {
+  if matrix == none or matrix.keys().len() == 0 {
+    return ((:),)
+  }
+  let keys = matrix.keys()
+  let combos = ((:),)
+  for key in keys {
+    let values = matrix.at(key)
+    let next = ()
+    for combo in combos {
+      for value in values {
+        let item = combo
+        item.insert(key, value)
+        next.push(item)
+      }
+    }
+    combos = next
+  }
+  combos
+}
+
+#let matrix-caption(combo) = {
+  combo
+    .keys()
+    .map(key => str(key) + "=" + repr(combo.at(key)))
+    .join(", ")
 }
 
 /// Turn `"210mm"` from JSON into a length. Named fields such as `paper` stay strings.
@@ -122,6 +158,27 @@
   }
 }
 
+#let render-one(found, args, viewport: none, caption: none) = {
+  let merged = found.args + args
+  let coerced = coerce-args(merged, found.arg-types)
+  let body = (found.render)(coerced)
+  let framed = if caption == none {
+    body
+  } else {
+    stack(
+      spacing: 6pt,
+      text(size: 8pt, fill: luma(90), caption),
+      body,
+    )
+  }
+  let spec = apply-viewport(found.page, viewport)
+  if spec != none {
+    page(..spec, framed)
+  } else {
+    framed
+  }
+}
+
 #let render-story(title, args, viewport: none) = context {
   let found = _stories.final().find(s => s.title == title)
   if found == none {
@@ -130,14 +187,12 @@
   if found.render == none {
     panic("typstbook: story has no render: " + title)
   }
-  // Live overrides win; story defaults fill keys the caller omitted.
-  let merged = found.args + args
-  let coerced = coerce-args(merged, found.arg-types)
-  let body = (found.render)(coerced)
-  let spec = apply-viewport(found.page, viewport)
-  if spec != none {
-    page(..spec, body)
+  let combos = matrix-combinations(found.matrix)
+  if combos.len() == 1 and found.matrix == none {
+    render-one(found, args, viewport: viewport)
   } else {
-    body
+    for combo in combos {
+      render-one(found, args + combo, viewport: viewport, caption: matrix-caption(combo))
+    }
   }
 }

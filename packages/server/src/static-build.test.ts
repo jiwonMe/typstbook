@@ -59,6 +59,8 @@ describe("writeStaticSite", () => {
           checks: null,
           source: null,
           docs: null,
+          matrix: null,
+          matrixCells: [],
           pages: ["<svg>ok</svg>"],
           diagnostics: [],
           pdf: null,
@@ -162,7 +164,7 @@ describe("buildStaticSite", () => {
         outDir,
       });
       assert.equal(data.errors.length, 0);
-      assert.equal(data.stories.length, 5);
+      assert.equal(data.stories.length, 6);
       assert.ok(data.stories.every((s) => s.pages.length > 0));
       assert.ok(
         data.stories.every((s) => s.pdf && Buffer.from(s.pdf, "base64").subarray(0, 5).toString() === "%PDF-"),

@@ -82,6 +82,8 @@ describe("uniquifyStoryIds", () => {
       checks: null,
       source: null,
       docs: null,
+      matrix: null,
+      matrixCells: [],
     });
     const result = uniquifyStoryIds([
       story("stories/callout--warning", "stories/a.stories.typ"),

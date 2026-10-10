@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { discoverPackageDocs, enrichStoryWithDocs } from "./autodocs.ts";
 import { parseChecks } from "./checks.ts";
+import { expandMatrix, parseMatrix } from "./matrix.ts";
 import type { ArgType, ExtractResult, FileError, FunctionDoc, StoryIR } from "./types.ts";
 import { inferArgTypes, storyId, uniquifyStoryIds } from "./ir.ts";
 import { discoverStoryFiles } from "./discover.ts";
@@ -22,6 +23,7 @@ type RawStory = {
   "arg-types"?: unknown;
   page?: unknown;
   checks?: unknown;
+  matrix?: unknown;
   "has-render"?: unknown;
 };
 
@@ -112,6 +114,7 @@ export function storiesFromEvalJson(
       });
     }
     const args = asRecord(raw.args);
+    const matrix = parseMatrix(raw.matrix);
     stories.push({
       id: storyId(file, raw.title),
       file,
@@ -123,6 +126,8 @@ export function storiesFromEvalJson(
       checks: parseChecks(raw.checks),
       source: null,
       docs: null,
+      matrix,
+      matrixCells: expandMatrix(matrix),
     });
   }
   return { stories, errors };

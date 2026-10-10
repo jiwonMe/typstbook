@@ -18,6 +18,7 @@ export function App() {
     state,
     selectStory,
     setArg,
+    setArgs,
     setZoom,
     setViewport,
     runChecks,
@@ -123,6 +124,7 @@ export function App() {
               viewportSpec={state.viewport}
               readOnly={readOnly}
               onViewport={setViewport}
+              onSelectMatrixCell={setArgs}
               leading={
                 <SidebarToggle
                   compact={isCompact}
