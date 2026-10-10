@@ -44,6 +44,7 @@ async function scaffoldStory(): Promise<{ root: string; story: StoryIR }> {
     page: { width: "80pt", height: "40pt", margin: "4pt" },
     checks: { snapshot: true, pages: null, width: null, height: null },
     source: null,
+    docs: null,
   };
   return { root, story };
 }

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ArgControl } from "@/components/arg-control";
 import { CodePanel } from "@/components/code-panel";
+import { DocsPanel } from "@/components/docs-panel";
 import { ProblemsPanel } from "@/components/problems-panel";
 import { TestsPanel } from "@/components/tests-panel";
 import { TokenBrowser } from "@/components/token-browser";
@@ -14,7 +15,6 @@ import { cn } from "@/lib/cn";
 import type { ControlsPlacement } from "@/lib/controls-placement";
 import { substituteArgs } from "@/lib/snippet";
 import {
-  shortPath,
   type Diagnostic,
   type FileError,
   type FontReport,
@@ -260,12 +260,7 @@ export function ControlsPanel({
             )}
           </div>
         ) : null}
-        {tab === "docs" ? (
-          <div className={cn(/* 문서 */ "grid gap-2 px-4 py-3")}>
-            <p className={cn(/* 설명 */ "text-ui text-[var(--color-text)]")}>{selected?.description || "No description."}</p>
-            <p className={cn(/* 경로 */ "text-ui text-[var(--color-text-secondary)]")}>{selected ? shortPath(selected.file) : "No story selected."}</p>
-          </div>
-        ) : null}
+        {tab === "docs" ? <DocsPanel selected={selected} /> : null}
         {tab === "problems" ? (
           <ProblemsPanel
             problems={problems}

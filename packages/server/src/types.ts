@@ -46,6 +46,23 @@ export type StoryChecks = {
   height: string | null;
 };
 
+export type ParamDoc = {
+  name: string;
+  type: string | null;
+  default: string | null;
+  description: string | null;
+  positional: boolean;
+};
+
+export type FunctionDoc = {
+  name: string;
+  module: string;
+  description: string | null;
+  returnType: string | null;
+  params: ParamDoc[];
+  signature: string;
+};
+
 export type StoryIR = {
   id: string;
   file: string;
@@ -57,6 +74,8 @@ export type StoryIR = {
   checks: StoryChecks | null;
   /** Verbatim `render:` source (falls back to the whole `#story(...)` call), or null if it could not be isolated. */
   source: string | null;
+  /** Autodocs for the primary function this story renders, if detected. */
+  docs: FunctionDoc | null;
 };
 
 export type TokenKind = "color" | "length" | "font" | "number" | "string" | "boolean";

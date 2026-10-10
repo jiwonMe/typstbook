@@ -1,7 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { discoverPackageDocs, enrichStoryWithDocs } from "./autodocs.ts";
 import { parseChecks } from "./checks.ts";
-import type { ArgType, ExtractResult, FileError, StoryIR } from "./types.ts";
+import type { ArgType, ExtractResult, FileError, FunctionDoc, StoryIR } from "./types.ts";
 import { inferArgTypes, storyId, uniquifyStoryIds } from "./ir.ts";
 import { discoverStoryFiles } from "./discover.ts";
 import { hasPreviewFile, previewSetupSource } from "./preview.ts";
@@ -121,6 +122,7 @@ export function storiesFromEvalJson(
       page: raw.page ?? null,
       checks: parseChecks(raw.checks),
       source: null,
+      docs: null,
     });
   }
   return { stories, errors };
@@ -130,6 +132,7 @@ async function attachSource(
   packageRoot: string,
   file: string,
   stories: StoryIR[],
+  packageDocs: FunctionDoc[] = [],
 ): Promise<StoryIR[]> {
   let snippets: Map<string, string>;
   try {
@@ -138,10 +141,17 @@ async function attachSource(
   } catch {
     snippets = new Map();
   }
-  return stories.map((story) => ({
-    ...story,
-    source: snippets.get(story.title) ?? null,
-  }));
+  return stories.map((story) => {
+    const source = snippets.get(story.title) ?? null;
+    const enriched = enrichStoryWithDocs({ ...story, source }, packageDocs);
+    return {
+      ...story,
+      source,
+      args: enriched.args,
+      argTypes: inferArgTypes(enriched.args, enriched.argTypes),
+      docs: enriched.docs,
+    };
+  });
 }
 
 export async function extractStoryFile(
@@ -181,9 +191,15 @@ export async function extractStoryFile(
   }
 
   const extracted = storiesFromEvalJson(file, result.stdout);
+  const packageDocs = await discoverPackageDocs(options.packageRoot);
   return {
     ...extracted,
-    stories: await attachSource(options.packageRoot, file, extracted.stories),
+    stories: await attachSource(
+      options.packageRoot,
+      file,
+      extracted.stories,
+      packageDocs,
+    ),
   };
 }
 
@@ -192,11 +208,17 @@ export async function extractAllStories(
 ): Promise<ExtractResult> {
   const files = await discoverStoryFiles(options.packageRoot);
   const includePreview = await hasPreviewFile(options.packageRoot);
+  const packageDocs = await discoverPackageDocs(options.packageRoot);
   const stories: StoryIR[] = [];
   const errors: FileError[] = [];
 
   for (const file of files) {
-    const extracted = await extractStoryFile(options, file, includePreview);
+    const extracted = await extractStoryFileWithDocs(
+      options,
+      file,
+      includePreview,
+      packageDocs,
+    );
     stories.push(...extracted.stories);
     errors.push(...extracted.errors);
   }
@@ -205,5 +227,52 @@ export async function extractAllStories(
   return {
     stories: unique.stories,
     errors: [...errors, ...unique.errors],
+  };
+}
+
+async function extractStoryFileWithDocs(
+  options: ExtractorOptions,
+  file: string,
+  includePreview: boolean,
+  packageDocs: FunctionDoc[],
+): Promise<ExtractResult> {
+  const result = await runTypst(
+    options.typst,
+    [
+      "eval",
+      EVAL_EXPRESSION,
+      "--in",
+      "-",
+      "--root",
+      options.packageRoot,
+      "--package-path",
+      options.packagePath,
+    ],
+    evalEntrySource(file, includePreview),
+  );
+
+  if (result.code !== 0) {
+    return {
+      stories: [],
+      errors: [
+        {
+          file,
+          message:
+            diagnosticsFromStderr(result.stderr).join("\n") ||
+            `typst eval failed with code ${result.code}`,
+        },
+      ],
+    };
+  }
+
+  const extracted = storiesFromEvalJson(file, result.stdout);
+  return {
+    ...extracted,
+    stories: await attachSource(
+      options.packageRoot,
+      file,
+      extracted.stories,
+      packageDocs,
+    ),
   };
 }

@@ -19,6 +19,23 @@ export type StoryChecks = {
   height: string | null;
 };
 
+export type ParamDoc = {
+  name: string;
+  type: string | null;
+  default: string | null;
+  description: string | null;
+  positional: boolean;
+};
+
+export type FunctionDoc = {
+  name: string;
+  module: string;
+  description: string | null;
+  returnType: string | null;
+  params: ParamDoc[];
+  signature: string;
+};
+
 export type StoryIR = {
   id: string;
   file: string;
@@ -29,6 +46,7 @@ export type StoryIR = {
   page: unknown;
   checks: StoryChecks | null;
   source: string | null;
+  docs?: FunctionDoc | null;
 };
 
 export type TokenKind = "color" | "length" | "font" | "number" | "string" | "boolean";

@@ -58,6 +58,7 @@ describe("writeStaticSite", () => {
           page: null,
           checks: null,
           source: null,
+          docs: null,
           pages: ["<svg>ok</svg>"],
           diagnostics: [],
           pdf: null,
